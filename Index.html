@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thời Khóa Biểu Gia Đình</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            overflow: hidden; 
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
+        }
+        .hide-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        .hide-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .hide-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .tab-active {
+            background-color: #eff6ff;
+            color: #2563eb;
+            border-bottom: 3px solid #2563eb;
+            font-weight: 600;
+        }
+        .tab-inactive {
+            color: #64748b;
+            border-bottom: 3px solid transparent;
+        }
+        .tab-inactive:hover {
+            background-color: #f1f5f9;
+            color: #334155;
+        }
+        .fade-in {
+            animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .matrix-grid {
+            display: grid;
+            grid-template-columns: 80px repeat(7, minmax(140px, 1fr));
+        }
+        
+        /* Hiệu ứng hiển thị Toast */
+        .toast-enter {
+            animation: slideInRight 0.3s forwards;
+        }
+        .toast-exit {
+            animation: slideOutRight 0.3s forwards;
+        }
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOutRight {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased h-screen flex flex-col w-full">
+
+<div class="w-full h-full p-2 sm:p-4 flex flex-col gap-3">
+    <!-- Header -->
+    <header class="flex-none flex flex-col md:flex-row justify-between items-center bg-white px-6 py-4 rounded-xl shadow-sm border border-slate-200">
+        <div class="flex items-center gap-4 mb-3 md:mb-0">
+            <div class="w-12 h-12 bg-blue-600 text-white rounded-xl flex items-center justify-center text-xl shadow-md">
+                <i class="fa-solid fa-calendar-days"></i>
+            </div>
+            <div>
+                <h1 class="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">Thời Khóa Biểu Gia Đình</h1>
+                <div class="flex items-center gap-2 text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+                    <span class="flex h-2.5 w-2.5 rounded-full bg-emerald-500" id="connection-status-dot"></span>
+                    <span id="connection-status-text">Đang kết nối Firebase...</span>
+                </div>
+            </div>
+        </div>
+        <div class="flex gap-3">
+            <button onclick="window.openAddModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 shadow-sm">
+                <i class="fa-solid fa-plus"></i> Thêm Lịch Trình
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="flex-1 flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-0">
+        
+        <!-- Tabs Bar -->
+        <div class="flex-none bg-slate-50 border-b border-slate-200 px-2 overflow-x-auto hide-scrollbar">
+            <nav class="flex" id="tabs-container">
+                <!-- Tabs will be rendered here by JS -->
+            </nav>
+        </div>
+
+        <!-- Schedule Container -->
+        <div class="flex-1 relative overflow-hidden flex flex-col bg-slate-50/50">
+            
+            <!-- Loading State -->
+            <div id="loading-state" class="absolute inset-0 z-10 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center text-slate-500">
+                <i class="fa-solid fa-circle-notch fa-spin text-4xl text-blue-500 mb-4"></i>
+                <p class="font-medium text-lg">Đang đồng bộ dữ liệu...</p>
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="hidden absolute inset-0 z-10 bg-white flex flex-col items-center justify-center text-slate-400">
+                <div class="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                    <i class="fa-regular fa-calendar-plus text-4xl text-slate-300"></i>
+                </div>
+                <p class="text-lg font-medium text-slate-500 mb-2">Chưa có lịch trình nào.</p>
+                <button onclick="window.openAddModal()" class="text-blue-600 hover:text-blue-700 font-medium">
+                    + Bấm vào đây để thêm mới
+                </button>
+            </div>
+
+            <!-- Matrix Container -->
+            <div id="schedule-container" class="hidden flex-1 overflow-auto hide-scrollbar">
+                <!-- The matrix will be injected here, taking full width/height -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="form-modal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm opacity-0 transition-opacity duration-300">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh]" id="modal-content">
+        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+            <h2 class="text-xl font-bold text-slate-800" id="modal-title">Thêm Lịch Trình</h2>
+            <button onclick="window.closeModal()" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-200 text-slate-500 hover:bg-slate-300 transition-colors">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+        
+        <div class="p-6 overflow-y-auto hide-scrollbar">
+            <form id="schedule-form" class="space-y-4">
+                <input type="hidden" id="form-id">
+                
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">Thành viên</label>
+                    <select id="form-member" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white" required>
+                        <option value="Cả nhà">Cả nhà</option>
+                        <option value="ba Sơn">ba Sơn</option>
+                        <option value="me Bo">me Bo</option>
+                        <option value="Rum">Rum</option>
+                        <option value="Nâu">Nâu</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">Thứ</label>
+                        <select id="form-day" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white" required>
+                            <option value="Thứ 2">Thứ 2</option>
+                            <option value="Thứ 3">Thứ 3</option>
+                            <option value="Thứ 4">Thứ 4</option>
+                            <option value="Thứ 5">Thứ 5</option>
+                            <option value="Thứ 6">Thứ 6</option>
+                            <option value="Thứ 7">Thứ 7</option>
+                            <option value="Chủ Nhật">Chủ Nhật</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">Thời gian</label>
+                        <input type="time" id="form-time" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white" required>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">Hoạt động</label>
+                    <textarea id="form-activity" rows="3" placeholder="Nhập nội dung công việc..." class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none" required></textarea>
+                </div>
+            </form>
+        </div>
+        
+        <div class="p-4 bg-slate-50 rounded-b-2xl border-t border-slate-100 flex justify-between items-center">
+            <button id="btn-delete" type="button" onclick="window.deleteCurrentSchedule()" class="hidden text-red-600 hover:text-red-700 font-semibold px-4 py-2 rounded hover:bg-red-50 transition-colors">
+                <i class="fa-regular fa-trash-can mr-1"></i> Xóa
+            </button>
+            <div class="flex gap-2 ml-auto">
+                <button type="button" onclick="window.closeModal()" class="px-4 py-2.5 rounded-lg text-slate-600 font-medium hover:bg-slate-200 transition-colors">
+                    Hủy
+                </button>
+                <button type="button" onclick="window.saveSchedule()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-semibold transition-colors shadow-sm flex items-center">
+                    <i class="fa-solid fa-check mr-2"></i> Lưu lại
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container (thay thế Alert) -->
+<div id="toast-container" class="fixed top-5 right-5 z-[60] flex flex-col gap-2 pointer-events-none"></div>
+
+<div id="setup-modal" class="fixed inset-0 bg-slate-900/80 z-[70] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full flex flex-col overflow-hidden">
+        <div class="p-5 border-b border-slate-100 bg-red-50 flex items-center gap-3">
+            <div class="w-10 h-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-xl shrink-0 shadow-inner">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <div>
+                <h2 class="text-lg font-bold text-slate-800">Cơ sở dữ liệu Firestore đang bị khóa!</h2>
+                <p class="text-sm text-slate-600">Firebase từ chối truy cập vì bạn chưa mở quy tắc bảo mật (Rules).</p>
+            </div>
+        </div>
+        <div class="p-6 bg-white overflow-y-auto max-h-[60vh]">
+            <p class="mb-4 text-slate-700">Để ứng dụng có quyền Thêm/Sửa/Xóa thời khóa biểu, vui lòng làm theo 4 bước sau:</p>
+            <ol class="list-decimal pl-5 space-y-3 text-slate-700 font-medium mb-6">
+                <li>Vào <a href="https://console.firebase.google.com/" target="_blank" class="text-blue-600 hover:underline">Firebase Console</a>, mở dự án <b class="text-slate-900">bau-cu-hoi-an-dong</b>.</li>
+                <li>Ở menu bên trái, chọn thẻ <b>Firestore Database</b>.</li>
+                <li>Chuyển sang tab <b>Rules (Quy tắc)</b> ở phía trên cùng.</li>
+                <li>Xóa hết nội dung cũ, <b>Copy và Dán</b> đoạn mã dưới đây vào, sau đó bấm nút <b>Publish (Xuất bản)</b>:</li>
+            </ol>
+            <div class="relative bg-slate-800 rounded-lg p-4 font-mono text-sm text-green-400 overflow-x-auto shadow-inner">
+                <button onclick="window.copyRules()" class="absolute top-2 right-2 bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-md text-xs transition-colors flex items-center gap-1.5" title="Copy">
+                    <i class="fa-regular fa-copy"></i> Copy
+                </button>
+                <pre id="rules-code">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}</pre>
+            </div>
+            <p class="mt-5 text-sm text-orange-700 bg-orange-50/80 p-3.5 rounded-lg border border-orange-200 flex items-start gap-2">
+                <i class="fa-solid fa-triangle-exclamation mt-0.5"></i> 
+                <span><b>Lưu ý quan trọng:</b> Sau khi bấm Publish trên Firebase, có thể mất đến 1-2 phút để quy tắc mới có hiệu lực. Hãy kiên nhẫn đợi một chút trước khi bấm Tải lại trang.</span>
+            </p>
+        </div>
+        <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+            <button onclick="window.location.reload()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-semibold transition-colors shadow-sm flex items-center">
+                <i class="fa-solid fa-rotate-right mr-2"></i> Tôi đã Publish xong (Tải lại trang)
+            </button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    // Nhập các hàm Firebase từ Google CDN
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Cấu hình Firebase của bạn
+    const firebaseConfig = {
+        apiKey: "AIzaSyB0v99cSqsAFCeEzso3UbIC_cQBqPuodNQ",
+        authDomain: "bau-cu-hoi-an-dong.firebaseapp.com",
+        projectId: "bau-cu-hoi-an-dong",
+        storageBucket: "bau-cu-hoi-an-dong.firebasestorage.app",
+        messagingSenderId: "736515363687",
+        appId: "1:736515363687:web:aa1dc997087d0a4e3315c2"
+    };
+
+    // Khởi tạo Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    
+    // Tên Collection lưu dữ liệu
+    const COLLECTION_NAME = "schedules";
+
+    // Quản lý trạng thái ứng dụng
+    const TABS = [
+        { id: 'Cả nhà', label: 'Cả nhà', icon: 'fa-users' },
+        { id: 'ba Sơn', label: 'Ba Sơn', icon: 'fa-user-tie' },
+        { id: 'me Bo', label: 'Mẹ Bo', icon: 'fa-person-dress' },
+        { id: 'Rum', label: 'Rum', icon: 'fa-child-reaching' },
+        { id: 'Nâu', label: 'Nâu', icon: 'fa-baby' }
+    ];
+    const DAYS_LIST = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'];
+
+    let state = {
+        activeTab: 'Cả nhà',
+        scheduleData: [], // Dữ liệu tải từ Firestore
+        isLoading: true
+    };
+
+    window.showToast = (message, type = 'success') => {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        
+        const bgColor = type === 'success' ? 'bg-emerald-500' : 'bg-red-500';
+        const icon = type === 'success' ? 'fa-check-circle' : 'fa-triangle-exclamation';
+
+        toast.className = `${bgColor} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 toast-enter pointer-events-auto`;
+        toast.innerHTML = `
+            <i class="fa-solid ${icon} text-xl"></i>
+            <span class="font-medium">${message}</span>
+        `;
+        
+        container.appendChild(toast);
+
+        // Tự động tắt sau 3 giây
+        setTimeout(() => {
+            toast.classList.remove('toast-enter');
+            toast.classList.add('toast-exit');
+            setTimeout(() => toast.remove(), 300); // Đợi animation chạy xong
+        }, 3000);
+    };
+
+    window.copyRules = () => {
+        const rules = document.getElementById('rules-code').innerText;
+        // Thử dùng API Clipboard hiện đại
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(rules).then(() => {
+                window.showToast("Đã copy quy tắc thành công!", "success");
+            });
+        } else {
+            // Fallback cho iFrame hoặc trình duyệt cũ
+            const textArea = document.createElement("textarea");
+            textArea.value = rules;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            textArea.style.top = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                window.showToast("Đã copy quy tắc thành công!", "success");
+            } catch (err) {
+                window.showToast("Lỗi copy. Vui lòng bôi đen và copy thủ công.", "error");
+            }
+            textArea.remove();
+        }
+    };
+
+    async function initApp() {
+        try {
+            // Đăng nhập ẩn danh để có quyền ghi dữ liệu mà không cần mật khẩu
+            await signInAnonymously(auth);
+            
+            // Theo dõi trạng thái đăng nhập
+            onAuthStateChanged(auth, (user) => {
+                const statusDot = document.getElementById('connection-status-dot');
+                const statusText = document.getElementById('connection-status-text');
+                
+                if (user) {
+                    statusDot.className = 'flex h-2.5 w-2.5 rounded-full bg-emerald-500';
+                    statusText.textContent = 'Đã đồng bộ Đám mây';
+                    statusText.className = 'text-emerald-600 font-semibold';
+                    
+                    // Lắng nghe dữ liệu realtime từ Firestore
+                    fetchRealtimeData();
+                } else {
+                    statusDot.className = 'flex h-2.5 w-2.5 rounded-full bg-red-500';
+                    statusText.textContent = 'Mất kết nối';
+                    statusText.className = 'text-red-600';
+                }
+            });
+        } catch (error) {
+            console.error("Lỗi Firebase Auth:", error);
+            window.showToast("Không thể kết nối máy chủ", "error");
+        }
+    }
+
+    // Lắng nghe dữ liệu realtime (Không dùng filter/orderBy phức tạp theo rule)
+    function fetchRealtimeData() {
+        const schedulesRef = collection(db, COLLECTION_NAME);
+        
+        onSnapshot(schedulesRef, (snapshot) => {
+            const rawData = [];
+            snapshot.forEach((doc) => {
+                rawData.push({ id: doc.id, ...doc.data() });
+            });
+            
+            // Lưu vào state và render lại giao diện
+            state.scheduleData = rawData;
+            state.isLoading = false;
+            renderAll();
+        }, (error) => {
+            console.error("Lỗi đọc dữ liệu:", error);
+            
+            if (error.message.includes("Missing or insufficient permissions") || error.code === "permission-denied") {
+                document.getElementById('setup-modal').classList.remove('hidden');
+                window.showToast("Truy cập bị từ chối do bảo mật Firebase!", "error");
+            } else {
+                window.showToast("Lỗi dữ liệu: " + error.message, "error");
+            }
+            
+            state.isLoading = false;
+            renderAll();
+        });
+    }
+
+    // Mở Form
+    window.openAddModal = () => {
+        document.getElementById('form-id').value = '';
+        document.getElementById('form-member').value = state.activeTab;
+        document.getElementById('form-day').value = 'Thứ 2';
+        document.getElementById('form-time').value = '08:00';
+        document.getElementById('form-activity').value = '';
+        
+        document.getElementById('modal-title').innerHTML = '<i class="fa-solid fa-calendar-plus text-blue-500 mr-2"></i>Thêm Lịch Trình';
+        document.getElementById('btn-delete').classList.add('hidden');
+        
+        toggleModal(true);
+    };
+
+    window.editSchedule = (id) => {
+        // Tìm item trong mảng dữ liệu
+        const item = state.scheduleData.find(d => d.id === id);
+        if (!item) return;
+
+        document.getElementById('form-id').value = item.id;
+        document.getElementById('form-member').value = item.member || 'Cả nhà';
+        document.getElementById('form-day').value = item.day || 'Thứ 2';
+        document.getElementById('form-time').value = item.time || '08:00';
+        document.getElementById('form-activity').value = item.activity || '';
+        
+        document.getElementById('modal-title').innerHTML = '<i class="fa-solid fa-pen-to-square text-orange-500 mr-2"></i>Sửa Lịch Trình';
+        document.getElementById('btn-delete').classList.remove('hidden');
+        
+        toggleModal(true);
+    };
+
+    window.closeModal = () => toggleModal(false);
+
+    function toggleModal(show) {
+        const modal = document.getElementById('form-modal');
+        const content = document.getElementById('modal-content');
+        if (show) {
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+            }, 10);
+        } else {
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+    }
+
+    // Lưu dữ liệu (Thêm mới hoặc Cập nhật)
+    window.saveSchedule = async () => {
+        const id = document.getElementById('form-id').value;
+        const member = document.getElementById('form-member').value;
+        const day = document.getElementById('form-day').value;
+        const time = document.getElementById('form-time').value;
+        const activity = document.getElementById('form-activity').value.trim();
+
+        if (!activity) {
+            window.showToast("Vui lòng nhập nội dung hoạt động!", "error");
+            return;
+        }
+
+        const dataObj = { member, day, time, activity };
+
+        try {
+            if (id) {
+                // Cập nhật
+                await updateDoc(doc(db, COLLECTION_NAME, id), dataObj);
+                window.showToast("Đã cập nhật lịch trình");
+            } else {
+                // Thêm mới
+                await addDoc(collection(db, COLLECTION_NAME), dataObj);
+                window.showToast("Đã thêm lịch trình mới");
+            }
+            window.closeModal();
+            // Nếu lưu vào người khác, tự động chuyển tab tới người đó cho dễ nhìn
+            if(state.activeTab !== member) {
+                state.activeTab = member;
+                renderAll();
+            }
+        } catch (error) {
+            console.error("Lỗi lưu:", error);
+            window.showToast("Lỗi: " + error.message, "error");
+        }
+    };
+
+    // Xóa dữ liệu
+    window.deleteCurrentSchedule = async () => {
+        const id = document.getElementById('form-id').value;
+        if (!id) return;
+        
+        try {
+            await deleteDoc(doc(db, COLLECTION_NAME, id));
+            window.showToast("Đã xóa lịch trình!");
+            window.closeModal();
+        } catch (error) {
+            console.error("Lỗi xóa:", error);
+            window.showToast("Lỗi xóa dữ liệu!", "error");
+        }
+    };
+
+    
+    // Phân loại buổi dựa trên giờ
+    function getSession(timeStr) {
+        if (!timeStr) return 'Sáng';
+        const match = timeStr.match(/^(\d{1,2})[:h]/i);
+        if (match) {
+            const hour = parseInt(match[1], 10);
+            if (hour < 12) return 'Sáng';
+            if (hour < 18) return 'Chiều';
+            return 'Tối';
+        }
+        return 'Sáng';
+    }
+
+    function renderTabs() {
+        const container = document.getElementById('tabs-container');
+        container.innerHTML = '';
+
+        TABS.forEach(tab => {
+            const btn = document.createElement('button');
+            const isActive = state.activeTab === tab.id;
+            
+            btn.className = `flex items-center gap-2 px-6 py-4 text-sm font-medium whitespace-nowrap transition-all duration-200 focus:outline-none ${isActive ? 'tab-active' : 'tab-inactive'}`;
+            btn.onclick = () => {
+                state.activeTab = tab.id;
+                renderAll();
+            };
+
+            btn.innerHTML = `
+                <i class="fa-solid ${tab.icon} ${isActive ? 'text-blue-600' : 'text-slate-400'} text-lg"></i>
+                <span>${tab.label}</span>
+            `;
+            container.appendChild(btn);
+        });
+    }
+
+    function renderSchedule() {
+        const loadingEl = document.getElementById('loading-state');
+        const emptyEl = document.getElementById('empty-state');
+        const scheduleEl = document.getElementById('schedule-container');
+
+        if (state.isLoading) {
+            loadingEl.classList.remove('hidden');
+            emptyEl.classList.add('hidden');
+            scheduleEl.classList.add('hidden');
+            return;
+        }
+
+        loadingEl.classList.add('hidden');
+
+        // Lọc dữ liệu trong bộ nhớ (JS) theo tab đang chọn
+        const filteredData = state.scheduleData.filter(item => {
+            return (item.member || '').toLowerCase() === state.activeTab.toLowerCase();
+        });
+
+        if (filteredData.length === 0) {
+            emptyEl.classList.remove('hidden');
+            scheduleEl.classList.add('hidden');
+            return;
+        }
+
+        emptyEl.classList.add('hidden');
+        scheduleEl.classList.remove('hidden');
+        
+        // Khởi tạo ma trận rỗng
+        const matrix = {};
+        DAYS_LIST.forEach(day => {
+            matrix[day] = { 'Sáng': [], 'Chiều': [], 'Tối': [] };
+        });
+
+        // Đổ dữ liệu vào ma trận
+        filteredData.forEach(item => {
+            const day = item.day ? item.day.trim() : '';
+            const normalizedDay = DAYS_LIST.find(d => d.toLowerCase() === day.toLowerCase()) || day;
+            
+            if (matrix[normalizedDay]) {
+                const session = getSession(item.time);
+                matrix[normalizedDay][session].push(item);
+            }
+        });
+
+        // Sắp xếp thời gian tăng dần trong từng ô
+        DAYS_LIST.forEach(day => {
+            ['Sáng', 'Chiều', 'Tối'].forEach(session => {
+                matrix[day][session].sort((a, b) => {
+                    const timeA = a.time || '00:00';
+                    const timeB = b.time || '00:00';
+                    return timeA.localeCompare(timeB);
+                });
+            });
+        });
+
+        // HTML cấu trúc Grid: Cột (Thứ), Hàng (Buổi)
+        let html = `
+            <div class="min-w-[1000px] h-full flex flex-col bg-slate-200 gap-[1px]">
+                <!-- Header Row (Các Thứ) -->
+                <div class="matrix-grid flex-none bg-slate-100 font-bold text-slate-700">
+                    <div class="p-4 flex items-center justify-center bg-slate-50 border-r border-slate-200">
+                        <span class="text-xs text-slate-500 uppercase tracking-widest">Buổi</span>
+                    </div>
+        `;
+
+        DAYS_LIST.forEach(day => {
+            html += `<div class="p-4 text-center uppercase text-sm tracking-wide bg-white">${day}</div>`;
+        });
+        html += `</div>`;
+
+        const sessions = [
+            { id: 'Sáng', icon: 'fa-sun', colors: 'text-amber-500 bg-amber-50/50', labelColor: 'text-amber-600', blockColor: 'bg-amber-100/60 border-amber-200 text-amber-900 hover:bg-amber-100 hover:shadow-md' },
+            { id: 'Chiều', icon: 'fa-cloud-sun', colors: 'text-orange-500 bg-orange-50/50', labelColor: 'text-orange-600', blockColor: 'bg-orange-100/60 border-orange-200 text-orange-900 hover:bg-orange-100 hover:shadow-md' },
+            { id: 'Tối', icon: 'fa-moon', colors: 'text-indigo-500 bg-indigo-50/50', labelColor: 'text-indigo-600', blockColor: 'bg-indigo-100/60 border-indigo-200 text-indigo-900 hover:bg-indigo-100 hover:shadow-md' }
+        ];
+
+        html += `<div class="flex-1 flex flex-col gap-[1px]">`;
+
+        sessions.forEach(session => {
+            html += `
+                <div class="matrix-grid flex-1 bg-white min-h-[160px]">
+                    <div class="p-4 flex flex-col items-center justify-center text-center border-r border-slate-100 ${session.colors}">
+                        <i class="fa-solid ${session.icon} text-3xl mb-2 drop-shadow-sm opacity-90"></i>
+                        <span class="font-bold uppercase tracking-wider text-sm ${session.labelColor}">${session.id}</span>
+                    </div>
+            `;
+
+            DAYS_LIST.forEach(day => {
+                html += `<div class="p-3 border-r border-slate-100 last:border-r-0 flex flex-col gap-2 overflow-y-auto hide-scrollbar">`;
+                
+                const items = matrix[day][session.id];
+                if (items.length === 0) {
+                    html += `
+                        <div onclick="window.openAddModal()" class="h-full min-h-[4rem] w-full flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors group">
+                            <i class="fa-solid fa-plus text-slate-300 group-hover:text-blue-400 mb-1"></i>
+                            <span class="text-slate-400 text-xs font-medium group-hover:text-blue-500">Thêm</span>
+                        </div>
+                    `;
+                } else {
+                    items.forEach(item => {
+                        html += `
+                            <div onclick="window.editSchedule('${item.id}')" class="${session.blockColor} p-3 rounded-lg border shadow-sm flex flex-col transition-all duration-200 cursor-pointer flex-shrink-0 group">
+                                <div class="font-bold mb-1 flex items-center justify-between text-xs opacity-80">
+                                    <span><i class="fa-regular fa-clock mr-1.5"></i>${item.time}</span>
+                                    <i class="fa-solid fa-pen text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                </div>
+                                <div class="text-sm font-medium leading-relaxed break-words whitespace-pre-line">${item.activity}</div>
+                            </div>
+                        `;
+                    });
+                }
+                html += `</div>`;
+            });
+
+            html += `</div>`;
+        });
+
+        html += `
+                </div>
+            </div>
+        `;
+
+        scheduleEl.classList.remove('fade-in');
+        void scheduleEl.offsetWidth; 
+        scheduleEl.classList.add('fade-in');
+
+        scheduleEl.innerHTML = html;
+    }
+
+    function renderAll() {
+        renderTabs();
+        renderSchedule();
+    }
+
+    // Bắt đầu chạy ứng dụng
+    window.onload = () => {
+        initApp();
+        renderTabs();
+    };
+</script>
+</body>
+</html>
