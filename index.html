@@ -160,8 +160,8 @@
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Thành viên</label>
                     <div class="relative">
-                        <select id="form-member" class="w-full border border-slate-200 rounded-xl p-3 pl-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none appearance-none font-semibold text-slate-700 bg-slate-50" required>
-                            <option value="Cả nhà">Cả nhà</option>
+                        <select id="form-member" onchange="window.handleMemberChange(this.value)" class="w-full border border-slate-200 rounded-xl p-3 pl-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none appearance-none font-semibold text-slate-700 bg-slate-50" required>
+                            <option value="Cả nhà">Cả nhà (Bảng ghi chú)</option>
                             <option value="ba Sơn">ba Sơn</option>
                             <option value="me Bo">me Bo</option>
                             <option value="Rum">Rum</option>
@@ -172,7 +172,7 @@
                     </div>
                 </div>
 
-                <div>
+                <div id="time-fields-container">
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Thời gian hoạt động</label>
                     <div class="grid grid-cols-3 gap-3">
                         <div class="col-span-1">
@@ -202,7 +202,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nội dung</label>
+                    <label id="activity-label" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nội dung</label>
                     <textarea id="form-activity" rows="3" placeholder="Nhập chi tiết hoạt động..." class="w-full border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none bg-slate-50 font-medium text-slate-700" required></textarea>
                 </div>
             </form>
@@ -375,9 +375,30 @@ service cloud.firestore {
         });
     }
 
+    window.handleMemberChange = (member) => {
+        const timeFields = document.getElementById('time-fields-container');
+        const activityLabel = document.getElementById('activity-label');
+        if(member === 'Cả nhà') {
+            timeFields.classList.add('hidden');
+            activityLabel.innerText = "Nội dung ghi chú (To-do)";
+        } else {
+            timeFields.classList.remove('hidden');
+            activityLabel.innerText = "Nội dung hoạt động";
+        }
+    };
+
+    window.toggleNoteStatus = async (id, currentStatus) => {
+        try {
+            await updateDoc(doc(db, COLLECTION_NAME, id), { completed: !currentStatus });
+        } catch (error) {
+            window.showToast("Lỗi cập nhật trạng thái!", "error");
+        }
+    };
+
     window.openAddModal = () => {
         document.getElementById('form-id').value = '';
         document.getElementById('form-member').value = state.activeTab;
+        window.handleMemberChange(state.activeTab);
         document.getElementById('form-day').value = 'Thứ 2';
         document.getElementById('form-startTime').value = '08:00';
         document.getElementById('form-endTime').value = '09:00';
@@ -393,7 +414,9 @@ service cloud.firestore {
         if (!item) return;
 
         document.getElementById('form-id').value = item.id;
-        document.getElementById('form-member').value = item.member || 'Cả nhà';
+        const memberVal = item.member || 'Cả nhà';
+        document.getElementById('form-member').value = memberVal;
+        window.handleMemberChange(memberVal);
         
         // Hỗ trợ map ngược từ các ngày viết tắt (nếu có) sang list chuẩn
         const rawDay = item.day || 'Thứ 2';
@@ -439,13 +462,19 @@ service cloud.firestore {
             return;
         }
         
-        // So sánh thời gian
-        if(startTime > endTime) {
+        // Kiểm tra thời gian nếu không phải "Cả nhà"
+        if(member !== 'Cả nhà' && startTime > endTime) {
             window.showToast("Thời gian Bắt đầu phải trước Kết thúc!", "error");
             return;
         }
 
-        const dataObj = { member, day, startTime, endTime, activity };
+        let dataObj = {};
+        if (member === 'Cả nhà') {
+            dataObj = { member, activity };
+            if (!id) dataObj.completed = false; // Mặc định chưa hoàn thành khi thêm mới
+        } else {
+            dataObj = { member, day, startTime, endTime, activity };
+        }
 
         try {
             if (id) {
@@ -538,6 +567,86 @@ service cloud.firestore {
         emptyEl.classList.add('hidden');
         scheduleEl.classList.remove('hidden');
         
+        // === NHÁNH RENDER CHO BẢNG GHI CHÚ (CẢ NHÀ) ===
+        if (state.activeTab === 'Cả nhà') {
+            const pendingNotes = filteredData.filter(item => !item.completed);
+            const completedNotes = filteredData.filter(item => item.completed);
+
+            let html = `
+                <div class="w-full h-full overflow-y-auto p-4 md:p-6 bg-slate-50/50 flex flex-col md:flex-row gap-6 items-start">
+                    
+                    <!-- Cột: Chưa hoàn thành -->
+                    <div class="flex-1 flex flex-col gap-3 w-full md:min-w-[300px]">
+                        <div class="flex items-center gap-2 mb-2 px-1">
+                            <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shadow-inner">
+                                <i class="fa-solid fa-list-ul"></i>
+                            </div>
+                            <h3 class="font-bold text-slate-700 text-lg">Chưa hoàn thành <span class="text-sm font-medium text-slate-400 ml-1">(${pendingNotes.length})</span></h3>
+                        </div>
+            `;
+            
+            if (pendingNotes.length === 0) {
+                html += `<div class="p-6 border-2 border-dashed border-slate-200 rounded-2xl text-center text-slate-400 font-medium bg-white/50">Tuyệt vời! Không còn việc gì tồn đọng.</div>`;
+            } else {
+                pendingNotes.forEach(item => {
+                    html += `
+                        <div class="group flex items-start gap-3 bg-white p-4 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-slate-100 transition-all hover:shadow-[0_5px_15px_rgba(0,0,0,0.06)] hover:border-blue-200 cursor-pointer">
+                            <button onclick="window.toggleNoteStatus('${item.id}', false)" class="mt-0.5 text-slate-300 hover:text-blue-500 transition-colors text-xl focus:outline-none">
+                                <i class="fa-regular fa-circle"></i>
+                            </button>
+                            <span class="flex-1 text-slate-700 font-medium whitespace-pre-line text-[15px] leading-relaxed" onclick="window.editSchedule('${item.id}')">${item.activity}</span>
+                            <button onclick="window.editSchedule('${item.id}')" class="opacity-0 lg:group-hover:opacity-100 transition-opacity text-slate-300 hover:text-blue-500 p-1">
+                                <i class="fa-solid fa-pen text-sm"></i>
+                            </button>
+                        </div>
+                    `;
+                });
+            }
+
+            html += `
+                    </div>
+
+                    <!-- Cột: Đã hoàn thành -->
+                    <div class="flex-1 flex flex-col gap-3 w-full md:min-w-[300px]">
+                        <div class="flex items-center gap-2 mb-2 px-1 mt-6 md:mt-0">
+                            <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-inner">
+                                <i class="fa-solid fa-check-double"></i>
+                            </div>
+                            <h3 class="font-bold text-slate-700 text-lg">Đã hoàn thành <span class="text-sm font-medium text-slate-400 ml-1">(${completedNotes.length})</span></h3>
+                        </div>
+            `;
+
+            if (completedNotes.length === 0) {
+                 html += `<div class="p-6 border-2 border-dashed border-slate-200 rounded-2xl text-center text-slate-400 font-medium bg-white/50">Chưa có công việc nào hoàn thành.</div>`;
+            } else {
+                 completedNotes.forEach(item => {
+                    html += `
+                        <div class="group flex items-start gap-3 bg-slate-50/80 p-4 rounded-2xl border border-slate-200/60 transition-all cursor-pointer">
+                            <button onclick="window.toggleNoteStatus('${item.id}', true)" class="mt-0.5 text-emerald-500 hover:text-emerald-600 transition-colors text-xl focus:outline-none">
+                                <i class="fa-solid fa-circle-check"></i>
+                            </button>
+                            <span class="flex-1 text-slate-400 font-medium whitespace-pre-line text-[15px] leading-relaxed line-through" onclick="window.editSchedule('${item.id}')">${item.activity}</span>
+                            <button onclick="window.editSchedule('${item.id}')" class="opacity-0 lg:group-hover:opacity-100 transition-opacity text-slate-300 hover:text-blue-500 p-1">
+                                <i class="fa-solid fa-pen text-sm"></i>
+                            </button>
+                        </div>
+                    `;
+                });
+            }
+
+            html += `
+                    </div>
+                </div>
+            `;
+
+            scheduleEl.classList.remove('fade-in');
+            void scheduleEl.offsetWidth; 
+            scheduleEl.classList.add('fade-in');
+            scheduleEl.innerHTML = html;
+            return;
+        }
+
+        // === NHÁNH RENDER CHO LỊCH TRÌNH CÁ NHÂN ===
         const matrix = {};
         DAYS_LIST.forEach(day => {
             matrix[day] = { 'Sáng': [], 'Chiều': [], 'Tối': [] };
@@ -563,10 +672,25 @@ service cloud.firestore {
             });
         });
 
+        /* --- TÍNH TOÁN NGÀY THÁNG CHO TUẦN HIỆN TẠI --- */
+        const now = new Date();
+        const currentDayOfWeek = now.getDay() === 0 ? 7 : now.getDay(); // Quy đổi CN=7, T2=1...
+        const weekDates = [];
+        for (let i = 1; i <= 7; i++) {
+            const date = new Date(now);
+            date.setDate(now.getDate() - currentDayOfWeek + i);
+            const d = date.getDate().toString().padStart(2, '0');
+            const m = (date.getMonth() + 1).toString().padStart(2, '0');
+            weekDates.push({
+                dayStr: DAYS_LIST[i-1],
+                dateStr: `${d}/${m}`,
+                isToday: i === currentDayOfWeek
+            });
+        }
+
         /* Thiết kế tươi trẻ: Lưới thông minh cho Smartphone & Desktop */
         let html = `
-            <!-- FIX: Thêm scroll-pl-[60px] md:scroll-pl-[70px] xl:scroll-pl-[80px] để khi Snap (hít) sẽ không bị đè dưới cột Sáng/Chiều/Tối -->
-            <div class="w-full h-full overflow-x-auto overflow-y-auto touch-pan-x snap-x snap-mandatory hide-scrollbar relative scroll-smooth scroll-pl-[60px] md:scroll-pl-[70px] xl:scroll-pl-[80px]">
+            <div id="schedule-scroll-container" class="w-full h-full overflow-x-auto overflow-y-auto touch-pan-x snap-x snap-mandatory hide-scrollbar relative scroll-smooth scroll-pl-[60px] md:scroll-pl-[70px] xl:scroll-pl-[80px]">
                 <div class="grid grid-cols-[60px_repeat(7,calc(100vw-60px))] md:grid-cols-[70px_repeat(7,250px)] xl:grid-cols-[80px_repeat(7,1fr)] w-max xl:w-full min-h-full bg-slate-50/30">
                     
                     <!-- Góc trên cùng bên trái (Cố định, nền đặc) -->
@@ -575,15 +699,20 @@ service cloud.firestore {
                     </div>
         `;
 
-        // Render Hàng Tiêu Đề (Các Thứ) với đường viền rõ nét
+        // Render Hàng Tiêu Đề (Các Thứ + Ngày Tháng)
         const dayColors = ['text-rose-500', 'text-orange-500', 'text-amber-500', 'text-emerald-500', 'text-cyan-500', 'text-blue-500', 'text-violet-500'];
-        DAYS_LIST.forEach((day, index) => {
-            let shortDay = day.replace('Thứ ', 'T.').replace('Chủ Nhật', 'CN');
+        weekDates.forEach((weekDay, index) => {
+            let shortDay = weekDay.dayStr.replace('Thứ ', 'T.').replace('Chủ Nhật', 'CN');
             let color = dayColors[index];
+            let todayClass = weekDay.isToday ? 'bg-blue-50 border-b-2 border-blue-500' : 'bg-white/95 border-b border-slate-200';
+            let todayId = weekDay.isToday ? 'id="header-today"' : '';
+            
             html += `
-                <div class="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-r border-slate-200 p-3 xl:p-4 text-center snap-start shadow-[0_2px_8px_rgba(0,0,0,0.03)] flex items-center justify-center">
-                    <span class="font-extrabold text-sm xl:text-base ${color} uppercase tracking-widest hidden xl:inline">${day}</span>
+                <div ${todayId} class="sticky top-0 z-30 ${todayClass} border-r border-slate-200 p-2 xl:p-3 text-center snap-start shadow-[0_2px_8px_rgba(0,0,0,0.03)] flex flex-col items-center justify-center relative">
+                    ${weekDay.isToday ? `<span class="absolute top-2 right-2 flex h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.8)]"></span>` : ''}
+                    <span class="font-extrabold text-sm xl:text-base ${color} uppercase tracking-widest hidden xl:inline">${weekDay.dayStr}</span>
                     <span class="font-extrabold text-sm ${color} uppercase tracking-widest xl:hidden">${shortDay}</span>
+                    <span class="text-[11px] xl:text-[13px] font-bold text-slate-500 mt-1 bg-white px-2 py-0.5 rounded-md border border-slate-200 shadow-sm">${weekDay.dateStr}</span>
                 </div>
             `;
         });
@@ -604,9 +733,12 @@ service cloud.firestore {
                 </div>
             `;
 
-            // Các ô dữ liệu (Kẻ viền xám nhạt để phân biệt rõ cột/hàng)
+            // Các ô dữ liệu
             DAYS_LIST.forEach(day => {
-                html += `<div class="${session.bgColor} border-b border-r border-slate-200 p-2.5 xl:p-3 flex flex-col gap-3 snap-start min-h-[140px] relative transition-colors hover:bg-white/50">`;
+                const isTodayStr = weekDates.find(d => d.dayStr === day).isToday;
+                const highlightCol = isTodayStr ? 'bg-blue-50/30' : session.bgColor;
+
+                html += `<div class="${highlightCol} border-b border-r border-slate-200 p-2.5 xl:p-3 flex flex-col gap-3 snap-start min-h-[140px] relative transition-colors hover:bg-white/50">`;
                 
                 const items = matrix[day][session.id];
                 items.forEach(item => {
@@ -614,17 +746,18 @@ service cloud.firestore {
                     const tEnd = item.endTime || '--:--';
                     
                     html += `
-                        <div onclick="window.editSchedule('${item.id}')" class="${session.bgCard} border-l-[4px] ${session.border} p-3.5 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.08)] border border-white/60 flex flex-col cursor-pointer transform hover:-translate-y-1 transition-all duration-300 w-full relative overflow-hidden group/card">
-                            <div class="absolute top-2.5 right-2.5 opacity-0 group-hover/card:opacity-100 transition-opacity text-slate-300 hover:text-blue-500">
-                                <i class="fa-solid fa-pen text-[11px]"></i>
+                        <div onclick="window.editSchedule('${item.id}')" class="${session.bgCard} border-l-[4px] ${session.border} p-3.5 xl:p-4 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.08)] border border-white flex flex-col cursor-pointer transform hover:-translate-y-1 transition-all duration-300 w-full relative overflow-hidden group/card">
+                            <div class="absolute top-3 right-3 opacity-0 group-hover/card:opacity-100 transition-opacity text-slate-300 hover:text-blue-500">
+                                <i class="fa-solid fa-pen text-[13px]"></i>
                             </div>
-                            <div class="flex justify-between items-start mb-2.5">
-                                <div class="text-[11px] xl:text-xs font-mono font-bold text-slate-500 bg-slate-50/80 px-2 py-1.5 rounded-lg flex items-center gap-1.5 border border-slate-100/50">
-                                    <i class="fa-regular fa-clock text-blue-400"></i>
+                            <div class="flex justify-between items-start mb-3">
+                                <!-- THỜI GIAN ĐƯỢC LÀM TO VÀ NỔI BẬT -->
+                                <div class="text-[13px] xl:text-[15px] font-mono font-extrabold text-blue-700 bg-blue-100/80 px-3 py-1.5 rounded-lg flex items-center gap-2 border border-blue-200 shadow-sm w-fit">
+                                    <i class="fa-regular fa-clock text-blue-500 text-sm xl:text-base"></i>
                                     <span>${tStart} - ${tEnd}</span>
                                 </div>
                             </div>
-                            <div class="text-[13px] xl:text-[14.5px] font-bold text-slate-700 leading-relaxed break-words whitespace-pre-line">${item.activity}</div>
+                            <div class="text-[14px] xl:text-[15px] font-bold text-slate-700 leading-relaxed break-words whitespace-pre-line">${item.activity}</div>
                         </div>
                     `;
                 });
@@ -642,6 +775,22 @@ service cloud.firestore {
         void scheduleEl.offsetWidth; 
         scheduleEl.classList.add('fade-in');
         scheduleEl.innerHTML = html;
+
+        // Auto-scroll tới ngày hiện tại trên điện thoại
+        setTimeout(() => {
+            const scrollContainer = document.getElementById('schedule-scroll-container');
+            const todayHeader = document.getElementById('header-today');
+            
+            // Chỉ cuộn nếu màn hình nhỏ (Mobile/Tablet) và tìm thấy cột của ngày hôm nay
+            if (scrollContainer && todayHeader && window.innerWidth < 1280) {
+                // Lấy vị trí của cột trừ đi khoảng trống của cột "Sáng/Chiều/Tối" bên trái (khoảng 60px trên mobile)
+                const scrollPos = todayHeader.offsetLeft - 60;
+                scrollContainer.scrollTo({
+                    left: scrollPos,
+                    behavior: 'smooth'
+                });
+            }
+        }, 300); // Đợi giao diện render xong (300ms) rồi mới cuộn
     }
 
     function renderAll() {
