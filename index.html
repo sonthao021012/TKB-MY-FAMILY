@@ -105,6 +105,16 @@
         </div>
         
         <div class="flex gap-3">
+            <!-- Nút bật/tắt thông báo (Desktop) -->
+            <button id="btn-notif" onclick="window.toggleNotifications()" class="hidden md:flex bg-white/50 hover:bg-white text-slate-500 hover:text-blue-600 px-4 py-2.5 rounded-2xl text-sm font-bold transition-all items-center gap-2 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-slate-200 hover:border-blue-200">
+                <i class="fa-solid fa-bell-slash" id="icon-notif"></i> <span id="text-notif">Tắt báo thức</span>
+            </button>
+            
+            <!-- Nút bật/tắt thông báo (Mobile) -->
+            <button onclick="window.toggleNotifications()" class="md:hidden bg-white/50 text-slate-500 hover:text-blue-600 w-10 h-10 rounded-full flex items-center justify-center shadow-sm border border-slate-200 transition-colors">
+                <i class="fa-solid fa-bell-slash" id="icon-notif-mobile"></i>
+            </button>
+
             <!-- Nút thêm (Desktop) -->
             <button onclick="window.openAddModal()" class="hidden md:flex bg-gradient-to-r from-blue-500 to-cyan-500 hover:scale-105 text-white px-6 py-2.5 rounded-2xl text-sm font-bold transition-all items-center gap-2 shadow-lg shadow-cyan-500/30">
                 <i class="fa-solid fa-plus"></i> Thêm Lịch Trình
@@ -281,7 +291,7 @@ service cloud.firestore {
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { initializeFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     // Cấu hình Firebase
     const firebaseConfig = {
@@ -295,7 +305,12 @@ service cloud.firestore {
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const db = getFirestore(app);
+    
+    // Cập nhật quan trọng: Ép sử dụng Long-polling để vượt tường lửa / Iframe sandbox
+    const db = initializeFirestore(app, {
+        experimentalForceLongPolling: true
+    });
+    
     const COLLECTION_NAME = "schedules_v2"; // Sử dụng collection mới để tránh xung đột data cũ
 
     const TABS = [
@@ -312,6 +327,165 @@ service cloud.firestore {
         scheduleData: [], 
         isLoading: true
     };
+
+    window.isNotifEnabled = false;
+    let notifInterval = null;
+    const notifiedSet = new Set(); // Lưu vết các ID đã thông báo để tránh trùng lặp
+
+    // Thêm âm thanh Beep Beep (Không cần tải file mp3, dùng trực tiếp Audio của trình duyệt)
+    function playBeep() {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if(!AudioContext) return;
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = 880; // Tone cao, dể chú ý
+            gain.gain.setValueAtTime(0.5, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.5);
+            
+            // Beep lần 2
+            setTimeout(() => {
+                const ctx2 = new AudioContext();
+                const osc2 = ctx2.createOscillator();
+                const gain2 = ctx2.createGain();
+                osc2.connect(gain2);
+                gain2.connect(ctx2.destination);
+                osc2.frequency.value = 880;
+                gain2.gain.setValueAtTime(0.5, ctx2.currentTime);
+                gain2.gain.exponentialRampToValueAtTime(0.001, ctx2.currentTime + 0.5);
+                osc2.start(ctx2.currentTime);
+                osc2.stop(ctx2.currentTime + 0.5);
+            }, 200);
+        } catch(e) {}
+    }
+
+    // Hàm Xử lý bật/tắt thông báo
+    window.toggleNotifications = async () => {
+        if (window.isNotifEnabled) {
+            window.isNotifEnabled = false;
+            updateNotifUI();
+            window.showToast("Đã TẮT thông báo");
+            if (notifInterval) clearInterval(notifInterval);
+        } else {
+            let permission = 'denied';
+            // Cố gắng xin quyền thông báo hệ thống
+            if ('Notification' in window) {
+                try {
+                    permission = await Notification.requestPermission();
+                } catch(e) {}
+            }
+
+            window.isNotifEnabled = true;
+            updateNotifUI();
+            startNotifLoop();
+
+            if (permission === 'granted') {
+                window.showToast("Đã BẬT báo thức qua Hệ thống máy tính!");
+                fireNotification("✅ Đã bật báo thức", "Bạn sẽ nhận được thông báo ngoài màn hình");
+            } else {
+                window.showToast("Trình duyệt chặn thông báo ngoài. Đã bật báo thức nội bộ (Âm thanh & Popup)!");
+                fireNotification("✅ Đã bật báo thức nội bộ", "Hãy giữ mở tab này để nghe chuông");
+            }
+        }
+    };
+
+    // Cập nhật Giao diện nút bấm
+    function updateNotifUI() {
+        const icons = [document.getElementById('icon-notif'), document.getElementById('icon-notif-mobile')];
+        const text = document.getElementById('text-notif');
+        
+        icons.forEach(icon => {
+            if(!icon) return;
+            if (window.isNotifEnabled) {
+                icon.className = 'fa-solid fa-bell text-yellow-500 animate-bounce';
+                setTimeout(() => icon.classList.remove('animate-bounce'), 1000); // Ngừng nảy sau 1s
+            } else {
+                icon.className = 'fa-solid fa-bell-slash text-slate-500';
+            }
+        });
+        if (text) {
+            text.textContent = window.isNotifEnabled ? 'Đang bật báo thức' : 'Tắt báo thức';
+            text.className = window.isNotifEnabled ? 'text-blue-600 font-bold' : 'text-slate-500 font-bold';
+        }
+    }
+
+    // Vòng lặp kiểm tra giờ liên tục (Mỗi phút 1 lần)
+    function startNotifLoop() {
+        if (notifInterval) clearInterval(notifInterval);
+        checkAndNotify(); 
+        notifInterval = setInterval(checkAndNotify, 60000); 
+    }
+
+    function checkAndNotify() {
+        if (!window.isNotifEnabled) return; // Không cần bắt buộc quyền OS nữa, cứ bật là chạy
+        
+        const now = new Date();
+        const currentDayIndex = now.getDay() === 0 ? 7 : now.getDay();
+        const currentDayStr = DAYS_LIST[currentDayIndex - 1];
+        const currentVal = now.getHours() * 60 + now.getMinutes();
+
+        state.scheduleData.forEach(item => {
+            if (item.completed) return; // Bỏ qua việc đã hoàn thành
+            if (item.member !== 'Cả nhà' && item.day !== currentDayStr) return; // Bỏ qua nếu không phải việc của ngày hôm nay
+            if (!item.startTime || !item.endTime) return;
+
+            const [sH, sM] = item.startTime.split(':').map(Number);
+            const startVal = sH * 60 + sM;
+            
+            const [eH, eM] = item.endTime.split(':').map(Number);
+            const endVal = eH * 60 + eM;
+
+            // Báo trước khi BẮT ĐẦU 5 phút
+            const timeToStart = startVal - currentVal;
+            if (timeToStart > 0 && timeToStart <= 5) {
+                const id = `${item.id}-start`;
+                if (!notifiedSet.has(id)) {
+                    fireNotification(`Sắp đến giờ (${item.member})`, `Hoạt động: ${item.activity}\nBắt đầu lúc: ${item.startTime}`);
+                    notifiedSet.add(id);
+                }
+            }
+
+            // Báo trước khi KẾT THÚC 5 phút
+            const timeToEnd = endVal - currentVal;
+            if (timeToEnd > 0 && timeToEnd <= 5) {
+                const id = `${item.id}-end`;
+                if (!notifiedSet.has(id)) {
+                    fireNotification(`Sắp kết thúc (${item.member})`, `Hoạt động: ${item.activity}\nKết thúc lúc: ${item.endTime}`);
+                    notifiedSet.add(id);
+                }
+            }
+        });
+    }
+
+    // Hàm bắn thông báo ra màn hình
+    function fireNotification(title, body) {
+        // 1. Luôn phát tiếng TING TING để nhắc nhở
+        playBeep();
+
+        // 2. Thử gọi thông báo hệ thống (Nếu được cấp quyền)
+        if ('Notification' in window && Notification.permission === 'granted') {
+            const options = {
+                body: body,
+                icon: 'https://raw.githubusercontent.com/sonthao021012/TKB-MY-FAMILY/main/Logo%20TKB%201.png',
+                vibrate: [200, 100, 200, 100, 200]
+            };
+            try {
+                new Notification(title, options);
+                return; // Nếu thành công thì dừng ở đây
+            } catch (e) {
+                console.log("OS Push failed, using fallback.");
+            }
+        }
+        
+        // 3. Nếu chạy file Offline bị chặn, dùng thông báo đỏ ngay trên web
+        const flatBody = body.replace(/\n/g, ' - ');
+        window.showToast(`🔔 ${title}: ${flatBody}`, "error"); 
+    }
 
     window.showToast = (message, type = 'success') => {
         const container = document.getElementById('toast-container');
@@ -368,7 +542,18 @@ service cloud.firestore {
 
     function fetchRealtimeData() {
         const schedulesRef = collection(db, COLLECTION_NAME);
+        
+        // Hẹn giờ tắt Vòng xoay Loading sau 11s nếu Firebase không phản hồi
+        const connectionTimeout = setTimeout(() => {
+            if (state.isLoading) {
+                state.isLoading = false;
+                window.showToast("Mạng không ổn định hoặc Cơ sở dữ liệu chưa được tạo trên Firebase Console!", "error");
+                renderAll();
+            }
+        }, 11000);
+
         onSnapshot(schedulesRef, (snapshot) => {
+            clearTimeout(connectionTimeout); // Hủy hẹn giờ nếu tải thành công
             const rawData = [];
             snapshot.forEach((doc) => {
                 rawData.push({ id: doc.id, ...doc.data() });
@@ -377,8 +562,11 @@ service cloud.firestore {
             state.isLoading = false;
             renderAll();
         }, (error) => {
+            clearTimeout(connectionTimeout);
             if (error.code === "permission-denied") {
                 document.getElementById('setup-modal').classList.remove('hidden');
+            } else {
+                window.showToast("Lỗi kết nối Firebase: " + error.message, "error");
             }
             state.isLoading = false;
             renderAll();
