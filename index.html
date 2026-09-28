@@ -328,7 +328,7 @@ service cloud.firestore {
         isLoading: true
     };
 
-    window.isNotifEnabled = false;
+    window.isNotifEnabled = true; // Mặc định BẬT báo thức
     let notifInterval = null;
     const notifiedSet = new Set(); // Lưu vết các ID đã thông báo để tránh trùng lặp
 
@@ -1003,6 +1003,17 @@ service cloud.firestore {
     window.onload = () => {
         initApp();
         renderTabs();
+        
+        // Tự động bật báo thức ngay khi tải trang
+        updateNotifUI();
+        startNotifLoop();
+        
+        // Tự động xin quyền thông báo hệ thống ngoài màn hình (nếu chưa cấp quyền)
+        if ('Notification' in window && Notification.permission === 'default') {
+            setTimeout(() => {
+                Notification.requestPermission().catch(() => {});
+            }, 2000); // Đợi 2s sau khi mở trang web để hiện hộp thoại xin quyền
+        }
     };
 </script>
 </body>
