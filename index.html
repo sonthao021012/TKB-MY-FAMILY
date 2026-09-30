@@ -105,14 +105,24 @@
         </div>
         
         <div class="flex gap-3">
-            <!-- Nút bật/tắt thông báo (Desktop) -->
-            <button id="btn-notif" onclick="window.toggleNotifications()" class="hidden md:flex bg-white/50 hover:bg-white text-slate-500 hover:text-blue-600 px-4 py-2.5 rounded-2xl text-sm font-bold transition-all items-center gap-2 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-slate-200 hover:border-blue-200">
-                <i class="fa-solid fa-bell-slash" id="icon-notif"></i> <span id="text-notif">Tắt báo thức</span>
+            <!-- Nút bật/tắt Tự động Telegram (Desktop) -->
+            <button id="btn-auto-tg" onclick="window.toggleAutoTelegram()" class="hidden md:flex bg-white/50 hover:bg-white text-slate-500 hover:text-cyan-600 px-4 py-2.5 rounded-2xl text-sm font-bold transition-all items-center gap-2 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-slate-200 hover:border-cyan-200">
+                <i class="fa-solid fa-robot" id="icon-auto-tg"></i> <span id="text-auto-tg">Auto Bot</span>
+            </button>
+
+            <!-- Nút Bot Telegram (Desktop) -->
+            <button onclick="window.sendTelegram()" class="hidden md:flex bg-cyan-50 text-cyan-600 hover:bg-cyan-100 px-4 py-2.5 rounded-2xl text-sm font-bold transition-all items-center gap-2 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-cyan-200">
+                <i class="fa-brands fa-telegram text-lg"></i> Báo cáo ngay
             </button>
             
-            <!-- Nút bật/tắt thông báo (Mobile) -->
-            <button onclick="window.toggleNotifications()" class="md:hidden bg-white/50 text-slate-500 hover:text-blue-600 w-10 h-10 rounded-full flex items-center justify-center shadow-sm border border-slate-200 transition-colors">
-                <i class="fa-solid fa-bell-slash" id="icon-notif-mobile"></i>
+            <!-- Nút bật/tắt Tự động (Mobile) -->
+            <button onclick="window.toggleAutoTelegram()" class="md:hidden bg-white/50 text-slate-500 hover:text-cyan-600 w-10 h-10 rounded-full flex items-center justify-center shadow-sm border border-slate-200 transition-colors">
+                <i class="fa-solid fa-robot" id="icon-auto-tg-mobile"></i>
+            </button>
+
+            <!-- Nút Telegram (Mobile) -->
+            <button onclick="window.sendTelegram()" class="md:hidden bg-cyan-50 text-cyan-600 hover:bg-cyan-100 w-10 h-10 rounded-full flex items-center justify-center shadow-sm border border-cyan-200 transition-colors">
+                <i class="fa-brands fa-telegram text-lg"></i>
             </button>
 
             <!-- Nút thêm (Desktop) -->
@@ -197,12 +207,12 @@
                     <div class="grid grid-cols-3 gap-3">
                         <div class="col-span-1">
                             <select id="form-day" class="w-full border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-slate-50 font-semibold text-slate-700" required>
-                                <option value="Thứ 2">T.2</option>
-                                <option value="Thứ 3">T.3</option>
-                                <option value="Thứ 4">T.4</option>
-                                <option value="Thứ 5">T.5</option>
-                                <option value="Thứ 6">T.6</option>
-                                <option value="Thứ 7">T.7</option>
+                                <option value="Thứ 2">Thứ 2</option>
+                                <option value="Thứ 3">Thứ 3</option>
+                                <option value="Thứ 4">Thứ 4</option>
+                                <option value="Thứ 5">Thứ 5</option>
+                                <option value="Thứ 6">Thứ 6</option>
+                                <option value="Thứ 7">Thứ 7</option>
                                 <option value="Chủ Nhật">CN</option>
                             </select>
                         </div>
@@ -293,7 +303,6 @@ service cloud.firestore {
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { initializeFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // Cấu hình Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyB0v99cSqsAFCeEzso3UbIC_cQBqPuodNQ",
         authDomain: "bau-cu-hoi-an-dong.firebaseapp.com",
@@ -306,12 +315,12 @@ service cloud.firestore {
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     
-    // Cập nhật quan trọng: Ép sử dụng Long-polling để vượt tường lửa / Iframe sandbox
+    // Cập nhật quan trọng: Ép sử dụng Long-polling để vượt tường lửa
     const db = initializeFirestore(app, {
         experimentalForceLongPolling: true
     });
     
-    const COLLECTION_NAME = "schedules_v2"; // Sử dụng collection mới để tránh xung đột data cũ
+    const COLLECTION_NAME = "schedules_v2";
 
     const TABS = [
         { id: 'Cả nhà', label: 'Cả nhà', icon: 'fa-users' },
@@ -328,101 +337,57 @@ service cloud.firestore {
         isLoading: true
     };
 
-    window.isNotifEnabled = true; // Mặc định BẬT báo thức
-    let notifInterval = null;
-    const notifiedSet = new Set(); // Lưu vết các ID đã thông báo để tránh trùng lặp
+    // --- CẤU HÌNH BOT TELEGRAM MẶC ĐỊNH ---
+    const TG_TOKEN = "8550339669:AAF5AUhGRXz324b7ecPbSIuBGXPhUvC4-xk";
+    const TG_CHAT_ID = "-5218349806";
 
-    // Thêm âm thanh Beep Beep (Không cần tải file mp3, dùng trực tiếp Audio của trình duyệt)
-    function playBeep() {
-        try {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if(!AudioContext) return;
-            const ctx = new AudioContext();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.frequency.value = 880; // Tone cao, dể chú ý
-            gain.gain.setValueAtTime(0.5, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-            osc.start(ctx.currentTime);
-            osc.stop(ctx.currentTime + 0.5);
-            
-            // Beep lần 2
-            setTimeout(() => {
-                const ctx2 = new AudioContext();
-                const osc2 = ctx2.createOscillator();
-                const gain2 = ctx2.createGain();
-                osc2.connect(gain2);
-                gain2.connect(ctx2.destination);
-                osc2.frequency.value = 880;
-                gain2.gain.setValueAtTime(0.5, ctx2.currentTime);
-                gain2.gain.exponentialRampToValueAtTime(0.001, ctx2.currentTime + 0.5);
-                osc2.start(ctx2.currentTime);
-                osc2.stop(ctx2.currentTime + 0.5);
-            }, 200);
-        } catch(e) {}
-    }
+    // Mặc định BẬT tự động báo cáo Telegram
+    window.isAutoTelegramEnabled = localStorage.getItem('auto_tg') !== 'false'; 
+    let telegramInterval = null;
+    const notifiedSet = new Set(); 
 
-    // Hàm Xử lý bật/tắt thông báo
-    window.toggleNotifications = async () => {
-        if (window.isNotifEnabled) {
-            window.isNotifEnabled = false;
-            updateNotifUI();
-            window.showToast("Đã TẮT thông báo");
-            if (notifInterval) clearInterval(notifInterval);
+    // Hàm Xử lý bật/tắt tự động báo Telegram
+    window.toggleAutoTelegram = () => {
+        window.isAutoTelegramEnabled = !window.isAutoTelegramEnabled;
+        localStorage.setItem('auto_tg', window.isAutoTelegramEnabled);
+        updateTelegramUI();
+        
+        if (window.isAutoTelegramEnabled) {
+            window.showToast("Đã BẬT tự động báo Bot Telegram");
+            startTelegramLoop();
         } else {
-            let permission = 'denied';
-            // Cố gắng xin quyền thông báo hệ thống
-            if ('Notification' in window) {
-                try {
-                    permission = await Notification.requestPermission();
-                } catch(e) {}
-            }
-
-            window.isNotifEnabled = true;
-            updateNotifUI();
-            startNotifLoop();
-
-            if (permission === 'granted') {
-                window.showToast("Đã BẬT báo thức qua Hệ thống máy tính!");
-                fireNotification("✅ Đã bật báo thức", "Bạn sẽ nhận được thông báo ngoài màn hình");
-            } else {
-                window.showToast("Trình duyệt chặn thông báo ngoài. Đã bật báo thức nội bộ (Âm thanh & Popup)!");
-                fireNotification("✅ Đã bật báo thức nội bộ", "Hãy giữ mở tab này để nghe chuông");
-            }
+            window.showToast("Đã TẮT tự động báo Bot Telegram");
+            if (telegramInterval) clearInterval(telegramInterval);
         }
     };
 
-    // Cập nhật Giao diện nút bấm
-    function updateNotifUI() {
-        const icons = [document.getElementById('icon-notif'), document.getElementById('icon-notif-mobile')];
-        const text = document.getElementById('text-notif');
+    function updateTelegramUI() {
+        const icons = [document.getElementById('icon-auto-tg'), document.getElementById('icon-auto-tg-mobile')];
+        const text = document.getElementById('text-auto-tg');
         
         icons.forEach(icon => {
             if(!icon) return;
-            if (window.isNotifEnabled) {
-                icon.className = 'fa-solid fa-bell text-yellow-500 animate-bounce';
-                setTimeout(() => icon.classList.remove('animate-bounce'), 1000); // Ngừng nảy sau 1s
+            if (window.isAutoTelegramEnabled) {
+                icon.className = 'fa-solid fa-robot text-cyan-500 animate-bounce';
+                setTimeout(() => icon.classList.remove('animate-bounce'), 1000); 
             } else {
-                icon.className = 'fa-solid fa-bell-slash text-slate-500';
+                icon.className = 'fa-solid fa-robot text-slate-400';
             }
         });
         if (text) {
-            text.textContent = window.isNotifEnabled ? 'Đang bật báo thức' : 'Tắt báo thức';
-            text.className = window.isNotifEnabled ? 'text-blue-600 font-bold' : 'text-slate-500 font-bold';
+            text.textContent = window.isAutoTelegramEnabled ? 'Auto Bot: BẬT' : 'Auto Bot: TẮT';
+            text.className = window.isAutoTelegramEnabled ? 'text-cyan-600 font-bold' : 'text-slate-500 font-bold';
         }
     }
 
-    // Vòng lặp kiểm tra giờ liên tục (Mỗi phút 1 lần)
-    function startNotifLoop() {
-        if (notifInterval) clearInterval(notifInterval);
-        checkAndNotify(); 
-        notifInterval = setInterval(checkAndNotify, 60000); 
+    function startTelegramLoop() {
+        if (telegramInterval) clearInterval(telegramInterval);
+        checkAndSendTelegram(); 
+        telegramInterval = setInterval(checkAndSendTelegram, 60000); 
     }
 
-    function checkAndNotify() {
-        if (!window.isNotifEnabled) return; // Không cần bắt buộc quyền OS nữa, cứ bật là chạy
+    function checkAndSendTelegram() {
+        if (!window.isAutoTelegramEnabled) return;
         
         const now = new Date();
         const currentDayIndex = now.getDay() === 0 ? 7 : now.getDay();
@@ -430,61 +395,36 @@ service cloud.firestore {
         const currentVal = now.getHours() * 60 + now.getMinutes();
 
         state.scheduleData.forEach(item => {
-            if (item.completed) return; // Bỏ qua việc đã hoàn thành
-            if (item.member !== 'Cả nhà' && item.day !== currentDayStr) return; // Bỏ qua nếu không phải việc của ngày hôm nay
+            if (item.completed) return; 
+            if (item.member !== 'Cả nhà' && item.day !== currentDayStr) return; 
             if (!item.startTime || !item.endTime) return;
 
             const [sH, sM] = item.startTime.split(':').map(Number);
             const startVal = sH * 60 + sM;
             
-            const [eH, eM] = item.endTime.split(':').map(Number);
-            const endVal = eH * 60 + eM;
-
             // Báo trước khi BẮT ĐẦU 5 phút
             const timeToStart = startVal - currentVal;
             if (timeToStart > 0 && timeToStart <= 5) {
                 const id = `${item.id}-start`;
                 if (!notifiedSet.has(id)) {
-                    fireNotification(`Sắp đến giờ (${item.member})`, `Hoạt động: ${item.activity}\nBắt đầu lúc: ${item.startTime}`);
-                    notifiedSet.add(id);
-                }
-            }
-
-            // Báo trước khi KẾT THÚC 5 phút
-            const timeToEnd = endVal - currentVal;
-            if (timeToEnd > 0 && timeToEnd <= 5) {
-                const id = `${item.id}-end`;
-                if (!notifiedSet.has(id)) {
-                    fireNotification(`Sắp kết thúc (${item.member})`, `Hoạt động: ${item.activity}\nKết thúc lúc: ${item.endTime}`);
+                    sendTelegramMessage(`🔔 BÁO CÁO TỰ ĐỘNG\nSắp đến giờ (${item.member}):\n👉 Hoạt động: ${item.activity}\n⏰ Bắt đầu lúc: ${item.startTime}`);
                     notifiedSet.add(id);
                 }
             }
         });
     }
 
-    // Hàm bắn thông báo ra màn hình
-    function fireNotification(title, body) {
-        // 1. Luôn phát tiếng TING TING để nhắc nhở
-        playBeep();
-
-        // 2. Thử gọi thông báo hệ thống (Nếu được cấp quyền)
-        if ('Notification' in window && Notification.permission === 'granted') {
-            const options = {
-                body: body,
-                icon: 'https://raw.githubusercontent.com/sonthao021012/TKB-MY-FAMILY/main/Logo%20TKB%201.png',
-                vibrate: [200, 100, 200, 100, 200]
-            };
-            try {
-                new Notification(title, options);
-                return; // Nếu thành công thì dừng ở đây
-            } catch (e) {
-                console.log("OS Push failed, using fallback.");
-            }
+    async function sendTelegramMessage(text) {
+        const url = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage`;
+        try {
+            await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: TG_CHAT_ID, text: text })
+            });
+        } catch (e) {
+            console.error("Lỗi gửi Telegram", e);
         }
-        
-        // 3. Nếu chạy file Offline bị chặn, dùng thông báo đỏ ngay trên web
-        const flatBody = body.replace(/\n/g, ' - ');
-        window.showToast(`🔔 ${title}: ${flatBody}`, "error"); 
     }
 
     window.showToast = (message, type = 'success') => {
@@ -506,6 +446,78 @@ service cloud.firestore {
             toast.classList.add('toast-exit');
             setTimeout(() => toast.remove(), 300);
         }, 3000);
+    };
+
+    function generateReportMessage() {
+        const now = new Date();
+        const currentDayIndex = now.getDay() === 0 ? 7 : now.getDay();
+        const currentDayStr = DAYS_LIST[currentDayIndex - 1];
+        
+        let report = `📅 BÁO CÁO LỊCH TRÌNH - ${currentDayStr} (${now.getDate()}/${now.getMonth() + 1})\n\n`;
+        let hasData = false;
+
+        // 1. Việc nhà chung chưa xong
+        const todoList = state.scheduleData.filter(item => item.member === 'Cả nhà' && !item.completed);
+        if (todoList.length > 0) {
+            hasData = true;
+            report += `🏠 VIỆC NHÀ CHUNG (Cần làm):\n`;
+            todoList.forEach(item => {
+                report += `  - ⏳ ${item.activity}\n`;
+            });
+            report += `\n`;
+        }
+
+        // 2. Lịch cá nhân hôm nay
+        TABS.forEach(tab => {
+            if (tab.id === 'Cả nhà') return;
+            const myJobs = state.scheduleData.filter(item => 
+                item.member === tab.id && item.day === currentDayStr
+            );
+            
+            if (myJobs.length > 0) {
+                hasData = true;
+                myJobs.sort((a, b) => (a.startTime || '00:00').localeCompare(b.startTime || '00:00'));
+                
+                report += `👤 ${tab.label.toUpperCase()}:\n`;
+                myJobs.forEach(item => {
+                    const tStart = item.startTime || '--:--';
+                    const tEnd = item.endTime || '--:--';
+                    report += `  - ⏰ ${tStart} đến ${tEnd}: ${item.activity}\n`;
+                });
+                report += `\n`;
+            }
+        });
+
+        if (!hasData) {
+            report += `Hôm nay nhà mình không có lịch trình nào cần làm! Nghỉ ngơi thôi! 🏖️\n`;
+        }
+        
+        report += `\n🤖 Gửi tự động từ TKB Gia Đình.`;
+        return report;
+    }
+
+    window.sendTelegram = async () => {
+        const report = generateReportMessage();
+        window.showToast("Đang điều khiển Bot gửi tin...");
+        
+        const url = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage`;
+        
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: TG_CHAT_ID, text: report })
+            });
+
+            const result = await response.json();
+            if (result.ok) {
+                window.showToast("🤖 Bot Telegram đã gửi tin nhắn thành công!");
+            } else {
+                window.showToast("Lỗi Bot: " + result.description, "error");
+            }
+        } catch (error) {
+            window.showToast("Lỗi kết nối mạng đến Telegram!", "error");
+        }
     };
 
     window.copyRules = () => {
@@ -543,7 +555,6 @@ service cloud.firestore {
     function fetchRealtimeData() {
         const schedulesRef = collection(db, COLLECTION_NAME);
         
-        // Hẹn giờ tắt Vòng xoay Loading sau 11s nếu Firebase không phản hồi
         const connectionTimeout = setTimeout(() => {
             if (state.isLoading) {
                 state.isLoading = false;
@@ -553,7 +564,7 @@ service cloud.firestore {
         }, 11000);
 
         onSnapshot(schedulesRef, (snapshot) => {
-            clearTimeout(connectionTimeout); // Hủy hẹn giờ nếu tải thành công
+            clearTimeout(connectionTimeout);
             const rawData = [];
             snapshot.forEach((doc) => {
                 rawData.push({ id: doc.id, ...doc.data() });
@@ -616,7 +627,6 @@ service cloud.firestore {
         document.getElementById('form-member').value = memberVal;
         window.handleMemberChange(memberVal);
         
-        // Hỗ trợ map ngược từ các ngày viết tắt (nếu có) sang list chuẩn
         const rawDay = item.day || 'Thứ 2';
         document.getElementById('form-day').value = DAYS_LIST.find(d => d.toLowerCase() === rawDay.toLowerCase()) || 'Thứ 2';
         
@@ -660,7 +670,6 @@ service cloud.firestore {
             return;
         }
         
-        // Kiểm tra thời gian nếu không phải "Cả nhà"
         if(member !== 'Cả nhà' && startTime > endTime) {
             window.showToast("Thời gian Bắt đầu phải trước Kết thúc!", "error");
             return;
@@ -669,7 +678,7 @@ service cloud.firestore {
         let dataObj = {};
         if (member === 'Cả nhà') {
             dataObj = { member, activity };
-            if (!id) dataObj.completed = false; // Mặc định chưa hoàn thành khi thêm mới
+            if (!id) dataObj.completed = false; 
         } else {
             dataObj = { member, day, startTime, endTime, activity };
         }
@@ -765,7 +774,6 @@ service cloud.firestore {
         emptyEl.classList.add('hidden');
         scheduleEl.classList.remove('hidden');
         
-        // === NHÁNH RENDER CHO BẢNG GHI CHÚ (CẢ NHÀ) ===
         if (state.activeTab === 'Cả nhà') {
             const pendingNotes = filteredData.filter(item => !item.completed);
             const completedNotes = filteredData.filter(item => item.completed);
@@ -773,7 +781,6 @@ service cloud.firestore {
             let html = `
                 <div class="w-full h-full overflow-y-auto p-4 md:p-6 bg-slate-50/50 flex flex-col md:flex-row gap-6 items-start">
                     
-                    <!-- Cột: Chưa hoàn thành -->
                     <div class="flex-1 flex flex-col gap-3 w-full md:min-w-[300px]">
                         <div class="flex items-center gap-2 mb-2 px-1">
                             <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shadow-inner">
@@ -804,7 +811,6 @@ service cloud.firestore {
             html += `
                     </div>
 
-                    <!-- Cột: Đã hoàn thành -->
                     <div class="flex-1 flex flex-col gap-3 w-full md:min-w-[300px]">
                         <div class="flex items-center gap-2 mb-2 px-1 mt-6 md:mt-0">
                             <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-inner">
@@ -844,7 +850,6 @@ service cloud.firestore {
             return;
         }
 
-        // === NHÁNH RENDER CHO LỊCH TRÌNH CÁ NHÂN ===
         const matrix = {};
         DAYS_LIST.forEach(day => {
             matrix[day] = { 'Sáng': [], 'Chiều': [], 'Tối': [] };
@@ -870,9 +875,8 @@ service cloud.firestore {
             });
         });
 
-        /* --- TÍNH TOÁN NGÀY THÁNG CHO TUẦN HIỆN TẠI --- */
         const now = new Date();
-        const currentDayOfWeek = now.getDay() === 0 ? 7 : now.getDay(); // Quy đổi CN=7, T2=1...
+        const currentDayOfWeek = now.getDay() === 0 ? 7 : now.getDay(); 
         const weekDates = [];
         for (let i = 1; i <= 7; i++) {
             const date = new Date(now);
@@ -890,31 +894,27 @@ service cloud.firestore {
             <div id="schedule-scroll-container" class="w-full h-full overflow-x-auto overflow-y-auto touch-pan-x snap-x snap-mandatory hide-scrollbar relative scroll-smooth scroll-pl-[60px] md:scroll-pl-[70px] xl:scroll-pl-[80px]">
                 <div class="grid grid-cols-[60px_repeat(7,calc(100vw-60px))] md:grid-cols-[70px_repeat(7,250px)] xl:grid-cols-[80px_repeat(7,1fr)] w-max xl:w-full min-h-full bg-slate-50/30">
                     
-                    <!-- Góc trên cùng bên trái (Header Bar - Ép mỏng và làm lợt màu) -->
-                    <div class="sticky top-0 left-0 z-40 bg-blue-300 flex items-center justify-center py-1 border-b border-r border-blue-400 shadow-sm">
-                        <i class="fa-regular fa-calendar-days text-white/90 text-sm xl:text-base drop-shadow-sm"></i>
+                    <div class="sticky top-0 left-0 z-40 bg-blue-300 flex items-center justify-center border-b border-r border-blue-400 shadow-sm">
+                        <i class="fa-regular fa-calendar-days text-white/90 text-base xl:text-lg drop-shadow-sm"></i>
                     </div>
         `;
 
-        // Render Hàng Tiêu Đề (Các Thứ + Ngày Tháng)
         weekDates.forEach((weekDay, index) => {
             let isToday = weekDay.isToday;
             let todayId = isToday ? 'id="header-today"' : '';
             
-            // Phân biệt: Làm lợt màu lại. Thứ mặc định xanh lam vừa, thứ khác xanh pastel lợt.
             let bgClass = isToday ? 'bg-blue-400' : 'bg-blue-200';
             let textColor = isToday ? 'text-white' : 'text-blue-800';
             let borderClass = isToday ? 'border-blue-500' : 'border-blue-300';
-            let pillClass = isToday ? 'bg-white text-blue-500 shadow-sm' : 'bg-white/60 text-blue-800';
+            let pillClass = isToday ? 'bg-white text-blue-500' : 'bg-white/50 text-blue-800';
             
-            // Ép mỏng tối đa chiều cao (padding nhỏ, leading-none)
             html += `
-                <div ${todayId} class="sticky top-0 z-30 ${bgClass} border-b border-r ${borderClass} py-1 px-1 text-center snap-start flex flex-col items-center justify-center shadow-sm transition-colors min-h-[36px] xl:min-h-[42px]">
-                    <div class="flex items-center justify-center gap-1 mb-[1px]">
-                        <span class="font-bold text-[11px] xl:text-[12px] uppercase tracking-wide ${textColor} leading-none">${weekDay.dayStr}</span>
-                        ${isToday ? `<span class="flex h-1.5 w-1.5 rounded-full bg-yellow-400 animate-pulse"></span>` : ''}
+                <div ${todayId} class="sticky top-0 z-30 ${bgClass} border-b border-r ${borderClass} py-1.5 px-1 text-center snap-start flex flex-col items-center justify-center shadow-sm transition-colors min-h-[44px] xl:min-h-[50px]">
+                    <div class="flex items-center justify-center gap-1 mb-1">
+                        <span class="font-bold text-[13px] md:text-sm xl:text-[15px] uppercase tracking-wide ${textColor} leading-none">${weekDay.dayStr}</span>
+                        ${isToday ? `<span class="flex h-1.5 w-1.5 rounded-full bg-yellow-400 animate-pulse shadow-sm"></span>` : ''}
                     </div>
-                    <span class="text-[9px] xl:text-[10px] font-bold ${pillClass} px-1.5 py-[1px] rounded-full leading-none">${weekDay.dateStr}</span>
+                    <span class="text-[10px] md:text-[11px] xl:text-xs font-bold ${pillClass} px-2 py-0.5 rounded-full leading-none shadow-sm">${weekDay.dateStr}</span>
                 </div>
             `;
         });
@@ -925,9 +925,7 @@ service cloud.firestore {
             { id: 'Tối', icon: 'fa-moon', color: 'text-indigo-400', border: 'border-indigo-300', bgCard: 'bg-white', bgColor: 'bg-indigo-50/40' }
         ];
 
-        // Render Các Hàng Dữ liệu
         sessions.forEach(session => {
-            // Cột đầu tiên (Tên Buổi - Cố định trái, NỀN TRẮNG ĐẶC, BÓNG ĐỔ RÕ RÀNG)
             html += `
                 <div class="sticky left-0 z-20 bg-white border-b border-r border-slate-200 flex flex-col items-center justify-center py-6 xl:py-8 shadow-[4px_0_12px_-2px_rgba(0,0,0,0.08)]">
                     <i class="fa-solid ${session.icon} text-2xl xl:text-3xl mb-1.5 ${session.color} drop-shadow-sm"></i>
@@ -935,7 +933,6 @@ service cloud.firestore {
                 </div>
             `;
 
-            // Các ô dữ liệu
             DAYS_LIST.forEach(day => {
                 const isTodayStr = weekDates.find(d => d.dayStr === day).isToday;
                 const highlightCol = isTodayStr ? 'bg-blue-50/30' : session.bgColor;
@@ -953,7 +950,6 @@ service cloud.firestore {
                                 <i class="fa-solid fa-pen text-[13px]"></i>
                             </div>
                             <div class="flex justify-between items-start mb-3">
-                                <!-- THỜI GIAN ĐƯỢC LÀM TO VÀ NỔI BẬT -->
                                 <div class="text-[13px] xl:text-[15px] font-mono font-extrabold text-blue-700 bg-blue-100/80 px-3 py-1.5 rounded-lg flex items-center gap-2 border border-blue-200 shadow-sm w-fit">
                                     <i class="fa-regular fa-clock text-blue-500 text-sm xl:text-base"></i>
                                     <span>${tStart} - ${tEnd}</span>
@@ -978,21 +974,18 @@ service cloud.firestore {
         scheduleEl.classList.add('fade-in');
         scheduleEl.innerHTML = html;
 
-        // Auto-scroll tới ngày hiện tại trên điện thoại
         setTimeout(() => {
             const scrollContainer = document.getElementById('schedule-scroll-container');
             const todayHeader = document.getElementById('header-today');
             
-            // Chỉ cuộn nếu màn hình nhỏ (Mobile/Tablet) và tìm thấy cột của ngày hôm nay
             if (scrollContainer && todayHeader && window.innerWidth < 1280) {
-                // Lấy vị trí của cột trừ đi khoảng trống của cột "Sáng/Chiều/Tối" bên trái (khoảng 60px trên mobile)
                 const scrollPos = todayHeader.offsetLeft - 60;
                 scrollContainer.scrollTo({
                     left: scrollPos,
                     behavior: 'smooth'
                 });
             }
-        }, 300); // Đợi giao diện render xong (300ms) rồi mới cuộn
+        }, 300); 
     }
 
     function renderAll() {
@@ -1004,15 +997,9 @@ service cloud.firestore {
         initApp();
         renderTabs();
         
-        // Tự động bật báo thức ngay khi tải trang
-        updateNotifUI();
-        startNotifLoop();
-        
-        // Tự động xin quyền thông báo hệ thống ngoài màn hình (nếu chưa cấp quyền)
-        if ('Notification' in window && Notification.permission === 'default') {
-            setTimeout(() => {
-                Notification.requestPermission().catch(() => {});
-            }, 2000); // Đợi 2s sau khi mở trang web để hiện hộp thoại xin quyền
+        updateTelegramUI();
+        if(window.isAutoTelegramEnabled) {
+            startTelegramLoop();
         }
     };
 </script>
