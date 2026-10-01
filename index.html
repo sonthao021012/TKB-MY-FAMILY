@@ -5,14 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <title>Thời Khóa Biểu Gia Đình</title>
-    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/sonthao021012/TKB-MY-FAMILY/main/Logo%20TKB%201.png">
-    <link rel="shortcut icon" href="https://raw.githubusercontent.com/sonthao021012/TKB-MY-FAMILY/main/Logo%20TKB%201.png">
-    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/sonthao021012/TKB-MY-FAMILY/main/Logo%20TKB%201.png">
+    
+    <!-- Favicon & App Icons cho Windows, Android, iOS -->
+    <link id="dynamic-favicon" rel="icon" type="image/png" sizes="256x256" href="https://raw.githubusercontent.com/sonthao021012/TKB-MY-FAMILY/main/Logo%20TKB%201.png">
+    <link id="dynamic-shortcut-icon" rel="shortcut icon" type="image/png" href="https://raw.githubusercontent.com/sonthao021012/TKB-MY-FAMILY/main/Logo%20TKB%201.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="https://raw.githubusercontent.com/sonthao021012/TKB-MY-FAMILY/main/Logo%20TKB%201.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="https://raw.githubusercontent.com/sonthao021012/TKB-MY-FAMILY/main/Logo%20TKB%201.png">
+    <link id="dynamic-apple-icon" rel="apple-touch-icon" sizes="180x180" href="https://raw.githubusercontent.com/sonthao021012/TKB-MY-FAMILY/main/Logo%20TKB%201.png">
+    
+    <!-- Cấu hình chuyên biệt cho Windows Shortcut / Edge / Chrome Desktop App -->
+    <meta name="application-name" content="TKB Gia Đình">
+    <meta name="msapplication-TileColor" content="#e0f2fe">
+    <meta name="msapplication-TileImage" content="https://raw.githubusercontent.com/sonthao021012/TKB-MY-FAMILY/main/Logo%20TKB%201.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="TKB Gia Đình">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#e0f2fe">
+
+    <!-- Web App Manifest nhúng trực tiếp giúp Windows nhận diện App Icon khi cài đặt -->
+    <link id="app-manifest" rel="manifest" href='data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22Th%E1%BB%9Di%20Kh%C3%B3a%20Bi%E1%BB%83u%20Gia%20%C4%90%C3%ACnh%22%2C%22short_name%22%3A%22TKB%20Gia%20%C4%90%C3%ACnh%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23e0f2fe%22%2C%22theme_color%22%3A%22%233b82f6%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fraw.githubusercontent.com%2Fsonthao021012%2FTKB-MY-FAMILY%2Fmain%2FLogo%2520TKB%25201.png%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fpng%22%2C%22purpose%22%3A%22any%20maskable%22%7D%2C%7B%22src%22%3A%22https%3A%2F%2Fraw.githubusercontent.com%2Fsonthao021012%2FTKB-MY-FAMILY%2Fmain%2FLogo%2520TKB%25201.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D'>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -98,35 +110,25 @@
                     </div>
                 </div>
             </div>
-            <!-- Nút thêm (Mobile) -->
-            <button onclick="window.openAddModal()" class="md:hidden bg-gradient-to-r from-blue-500 to-cyan-500 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30">
-                <i class="fa-solid fa-plus"></i>
-            </button>
+            <!-- Nhóm nút trên Mobile -->
+            <div class="flex md:hidden items-center gap-2">
+                <button onclick="window.sendTelegram()" title="Báo cáo ngay sang Telegram" class="bg-cyan-50 text-cyan-600 hover:bg-cyan-100 w-10 h-10 rounded-full flex items-center justify-center shadow-sm border border-cyan-200 transition-colors">
+                    <i class="fa-brands fa-telegram text-lg"></i>
+                </button>
+                <button onclick="window.openAddModal()" title="Thêm lịch trình" class="bg-gradient-to-r from-blue-500 to-cyan-500 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+            </div>
         </div>
         
-        <div class="flex gap-3">
-            <!-- Nút bật/tắt Tự động Telegram (Desktop) -->
-            <button id="btn-auto-tg" onclick="window.toggleAutoTelegram()" class="hidden md:flex bg-white/50 hover:bg-white text-slate-500 hover:text-cyan-600 px-4 py-2.5 rounded-2xl text-sm font-bold transition-all items-center gap-2 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-slate-200 hover:border-cyan-200">
-                <i class="fa-solid fa-robot" id="icon-auto-tg"></i> <span id="text-auto-tg">Auto Bot</span>
-            </button>
-
+        <div class="hidden md:flex gap-3">
             <!-- Nút Bot Telegram (Desktop) -->
-            <button onclick="window.sendTelegram()" class="hidden md:flex bg-cyan-50 text-cyan-600 hover:bg-cyan-100 px-4 py-2.5 rounded-2xl text-sm font-bold transition-all items-center gap-2 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-cyan-200">
+            <button onclick="window.sendTelegram()" class="bg-cyan-50 text-cyan-600 hover:bg-cyan-100 px-4 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-2 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-cyan-200">
                 <i class="fa-brands fa-telegram text-lg"></i> Báo cáo ngay
-            </button>
-            
-            <!-- Nút bật/tắt Tự động (Mobile) -->
-            <button onclick="window.toggleAutoTelegram()" class="md:hidden bg-white/50 text-slate-500 hover:text-cyan-600 w-10 h-10 rounded-full flex items-center justify-center shadow-sm border border-slate-200 transition-colors">
-                <i class="fa-solid fa-robot" id="icon-auto-tg-mobile"></i>
-            </button>
-
-            <!-- Nút Telegram (Mobile) -->
-            <button onclick="window.sendTelegram()" class="md:hidden bg-cyan-50 text-cyan-600 hover:bg-cyan-100 w-10 h-10 rounded-full flex items-center justify-center shadow-sm border border-cyan-200 transition-colors">
-                <i class="fa-brands fa-telegram text-lg"></i>
             </button>
 
             <!-- Nút thêm (Desktop) -->
-            <button onclick="window.openAddModal()" class="hidden md:flex bg-gradient-to-r from-blue-500 to-cyan-500 hover:scale-105 text-white px-6 py-2.5 rounded-2xl text-sm font-bold transition-all items-center gap-2 shadow-lg shadow-cyan-500/30">
+            <button onclick="window.openAddModal()" class="bg-gradient-to-r from-blue-500 to-cyan-500 hover:scale-105 text-white px-6 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-2 shadow-lg shadow-cyan-500/30">
                 <i class="fa-solid fa-plus"></i> Thêm Lịch Trình
             </button>
         </div>
@@ -202,31 +204,56 @@
                     </div>
                 </div>
 
-                <div id="time-fields-container">
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Thời gian hoạt động</label>
-                    <div class="grid grid-cols-3 gap-3">
-                        <div class="col-span-1">
-                            <select id="form-day" class="w-full border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-slate-50 font-semibold text-slate-700" required>
-                                <option value="Thứ 2">Thứ 2</option>
-                                <option value="Thứ 3">Thứ 3</option>
-                                <option value="Thứ 4">Thứ 4</option>
-                                <option value="Thứ 5">Thứ 5</option>
-                                <option value="Thứ 6">Thứ 6</option>
-                                <option value="Thứ 7">Thứ 7</option>
-                                <option value="Chủ Nhật">CN</option>
-                            </select>
-                        </div>
-                        <div class="col-span-1">
-                            <div class="relative">
-                                <input type="time" id="form-startTime" class="w-full border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 font-mono text-sm font-semibold" required title="Từ">
-                                <span class="absolute -top-2 left-3 bg-white px-1 text-[10px] font-bold text-slate-400 uppercase">Từ</span>
+                <div id="time-fields-container" class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Thời gian hoạt động</label>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="col-span-1">
+                                <select id="form-day" class="w-full border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-slate-50 font-semibold text-slate-700 transition-opacity" required>
+                                    <option value="Thứ 2">Thứ 2</option>
+                                    <option value="Thứ 3">Thứ 3</option>
+                                    <option value="Thứ 4">Thứ 4</option>
+                                    <option value="Thứ 5">Thứ 5</option>
+                                    <option value="Thứ 6">Thứ 6</option>
+                                    <option value="Thứ 7">Thứ 7</option>
+                                    <option value="Chủ Nhật">CN</option>
+                                </select>
+                            </div>
+                            <div class="col-span-1">
+                                <div class="relative">
+                                    <input type="time" id="form-startTime" class="w-full border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 font-mono text-sm font-semibold" required title="Từ">
+                                    <span class="absolute -top-2 left-3 bg-white px-1 text-[10px] font-bold text-slate-400 uppercase">Từ</span>
+                                </div>
+                            </div>
+                            <div class="col-span-1">
+                                <div class="relative">
+                                    <input type="time" id="form-endTime" class="w-full border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 font-mono text-sm font-semibold" required title="Đến">
+                                    <span class="absolute -top-2 left-3 bg-white px-1 text-[10px] font-bold text-slate-400 uppercase">Đến</span>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-span-1">
-                            <div class="relative">
-                                <input type="time" id="form-endTime" class="w-full border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 font-mono text-sm font-semibold" required title="Đến">
-                                <span class="absolute -top-2 left-3 bg-white px-1 text-[10px] font-bold text-slate-400 uppercase">Đến</span>
-                            </div>
+                    </div>
+
+                    <!-- Tùy chọn lặp lại lịch trình -->
+                    <div class="bg-blue-50/60 border border-blue-100 rounded-xl p-3 space-y-2.5">
+                        <div class="text-[11px] font-bold text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-repeat"></i> Tùy chọn lặp lại nhanh
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <label class="flex items-center gap-2.5 p-2 rounded-lg bg-white border border-slate-200/80 cursor-pointer hover:border-blue-400 transition-colors select-none">
+                                <input type="checkbox" id="form-repeat-weekdays" onchange="window.handleRepeatChange('weekdays')" class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer">
+                                <div class="leading-tight">
+                                    <div class="text-xs font-bold text-slate-700">Lặp lại ngày thường</div>
+                                    <div class="text-[10px] font-medium text-slate-400">Thứ 2 đến Thứ 6</div>
+                                </div>
+                            </label>
+                            <label class="flex items-center gap-2.5 p-2 rounded-lg bg-white border border-slate-200/80 cursor-pointer hover:border-blue-400 transition-colors select-none">
+                                <input type="checkbox" id="form-repeat-allweek" onchange="window.handleRepeatChange('allweek')" class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer">
+                                <div class="leading-tight">
+                                    <div class="text-xs font-bold text-slate-700">Lặp lại cả tuần</div>
+                                    <div class="text-[10px] font-medium text-slate-400">Thứ 2 đến Chủ Nhật</div>
+                                </div>
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -246,7 +273,7 @@
                 <button type="button" onclick="window.closeModal()" class="px-5 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-200 transition-colors text-sm">
                     Hủy
                 </button>
-                <button type="button" onclick="window.saveSchedule()" class="bg-gradient-to-r from-blue-500 to-cyan-500 hover:scale-105 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-cyan-500/30 text-sm">
+                <button id="btn-save" type="button" onclick="window.saveSchedule()" class="bg-gradient-to-r from-blue-500 to-cyan-500 hover:scale-105 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-cyan-500/30 text-sm">
                     Lưu
                 </button>
             </div>
@@ -315,12 +342,12 @@ service cloud.firestore {
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     
-    // Cập nhật quan trọng: Ép sử dụng Long-polling để vượt tường lửa
     const db = initializeFirestore(app, {
         experimentalForceLongPolling: true
     });
     
     const COLLECTION_NAME = "schedules_v2";
+    const LOGO_URL = "https://raw.githubusercontent.com/sonthao021012/TKB-MY-FAMILY/main/Logo%20TKB%201.png";
 
     const TABS = [
         { id: 'Cả nhà', label: 'Cả nhà', icon: 'fa-users' },
@@ -330,6 +357,7 @@ service cloud.firestore {
         { id: 'Nâu', label: 'Nâu', icon: 'fa-baby' }
     ];
     const DAYS_LIST = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'];
+    const WEEKDAYS_LIST = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6'];
 
     let state = {
         activeTab: 'Cả nhà',
@@ -337,94 +365,59 @@ service cloud.firestore {
         isLoading: true
     };
 
-    // --- CẤU HÌNH BOT TELEGRAM MẶC ĐỊNH ---
+    // --- CẤU HÌNH BOT TELEGRAM ---
     const TG_TOKEN = "8550339669:AAF5AUhGRXz324b7ecPbSIuBGXPhUvC4-xk";
     const TG_CHAT_ID = "-5218349806";
 
-    // Mặc định BẬT tự động báo cáo Telegram
-    window.isAutoTelegramEnabled = localStorage.getItem('auto_tg') !== 'false'; 
-    let telegramInterval = null;
-    const notifiedSet = new Set(); 
+    // --- TỐI ƯU HÓA ICON KHI TẠO SHORTCUT / APP TRÊN WINDOWS ---
+    function setupWindowsAppIcon() {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+            try {
+                const sizes = [192, 256, 512];
+                const iconsData = {};
 
-    // Hàm Xử lý bật/tắt tự động báo Telegram
-    window.toggleAutoTelegram = () => {
-        window.isAutoTelegramEnabled = !window.isAutoTelegramEnabled;
-        localStorage.setItem('auto_tg', window.isAutoTelegramEnabled);
-        updateTelegramUI();
-        
-        if (window.isAutoTelegramEnabled) {
-            window.showToast("Đã BẬT tự động báo Bot Telegram");
-            startTelegramLoop();
-        } else {
-            window.showToast("Đã TẮT tự động báo Bot Telegram");
-            if (telegramInterval) clearInterval(telegramInterval);
-        }
-    };
+                sizes.forEach(size => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = size;
+                    canvas.height = size;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, size, size);
+                    iconsData[size] = canvas.toDataURL('image/png');
+                });
 
-    function updateTelegramUI() {
-        const icons = [document.getElementById('icon-auto-tg'), document.getElementById('icon-auto-tg-mobile')];
-        const text = document.getElementById('text-auto-tg');
-        
-        icons.forEach(icon => {
-            if(!icon) return;
-            if (window.isAutoTelegramEnabled) {
-                icon.className = 'fa-solid fa-robot text-cyan-500 animate-bounce';
-                setTimeout(() => icon.classList.remove('animate-bounce'), 1000); 
-            } else {
-                icon.className = 'fa-solid fa-robot text-slate-400';
+                const favEl = document.getElementById('dynamic-favicon');
+                const shortEl = document.getElementById('dynamic-shortcut-icon');
+                const appleEl = document.getElementById('dynamic-apple-icon');
+                if (favEl) favEl.href = iconsData[256];
+                if (shortEl) shortEl.href = iconsData[256];
+                if (appleEl) appleEl.href = iconsData[192];
+
+                const manifestObj = {
+                    name: "Thời Khóa Biểu Gia Đình",
+                    short_name: "TKB Gia Đình",
+                    description: "Ứng dụng Quản lý Lịch Trình Gia Đình",
+                    start_url: window.location.href,
+                    display: "standalone",
+                    background_color: "#e0f2fe",
+                    theme_color: "#3b82f6",
+                    icons: [
+                        { src: iconsData[192], sizes: "192x192", type: "image/png", purpose: "any" },
+                        { src: iconsData[256], sizes: "256x256", type: "image/png", purpose: "any" },
+                        { src: iconsData[512], sizes: "512x512", type: "image/png", purpose: "any" }
+                    ]
+                };
+
+                const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
+                const manifestUrl = URL.createObjectURL(manifestBlob);
+                const manifestEl = document.getElementById('app-manifest');
+                if (manifestEl) manifestEl.href = manifestUrl;
+            } catch (e) {
+                console.warn("Giữ nguyên cấu hình icon mặc định:", e);
             }
-        });
-        if (text) {
-            text.textContent = window.isAutoTelegramEnabled ? 'Auto Bot: BẬT' : 'Auto Bot: TẮT';
-            text.className = window.isAutoTelegramEnabled ? 'text-cyan-600 font-bold' : 'text-slate-500 font-bold';
-        }
-    }
-
-    function startTelegramLoop() {
-        if (telegramInterval) clearInterval(telegramInterval);
-        checkAndSendTelegram(); 
-        telegramInterval = setInterval(checkAndSendTelegram, 60000); 
-    }
-
-    function checkAndSendTelegram() {
-        if (!window.isAutoTelegramEnabled) return;
-        
-        const now = new Date();
-        const currentDayIndex = now.getDay() === 0 ? 7 : now.getDay();
-        const currentDayStr = DAYS_LIST[currentDayIndex - 1];
-        const currentVal = now.getHours() * 60 + now.getMinutes();
-
-        state.scheduleData.forEach(item => {
-            if (item.completed) return; 
-            if (item.member !== 'Cả nhà' && item.day !== currentDayStr) return; 
-            if (!item.startTime || !item.endTime) return;
-
-            const [sH, sM] = item.startTime.split(':').map(Number);
-            const startVal = sH * 60 + sM;
-            
-            // Báo trước khi BẮT ĐẦU 5 phút
-            const timeToStart = startVal - currentVal;
-            if (timeToStart > 0 && timeToStart <= 5) {
-                const id = `${item.id}-start`;
-                if (!notifiedSet.has(id)) {
-                    sendTelegramMessage(`🔔 BÁO CÁO TỰ ĐỘNG\nSắp đến giờ (${item.member}):\n👉 Hoạt động: ${item.activity}\n⏰ Bắt đầu lúc: ${item.startTime}`);
-                    notifiedSet.add(id);
-                }
-            }
-        });
-    }
-
-    async function sendTelegramMessage(text) {
-        const url = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage`;
-        try {
-            await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: TG_CHAT_ID, text: text })
-            });
-        } catch (e) {
-            console.error("Lỗi gửi Telegram", e);
-        }
+        };
+        img.src = LOGO_URL;
     }
 
     window.showToast = (message, type = 'success') => {
@@ -492,7 +485,7 @@ service cloud.firestore {
             report += `Hôm nay nhà mình không có lịch trình nào cần làm! Nghỉ ngơi thôi! 🏖️\n`;
         }
         
-        report += `\n🤖 Gửi tự động từ TKB Gia Đình.`;
+        report += `\n🤖 Gửi từ TKB Gia Đình.`;
         return report;
     }
 
@@ -544,7 +537,7 @@ service cloud.firestore {
                 } else {
                     statusDot.className = 'flex h-2 w-2 rounded-full bg-red-500';
                     statusText.textContent = 'OFFLINE';
-                    statusText.className = 'text-red-600 font-bold';
+                    statusText.textName = 'text-red-600 font-bold';
                 }
             });
         } catch (error) {
@@ -584,6 +577,39 @@ service cloud.firestore {
         });
     }
 
+    // Xử lý khi tick vào ô Lặp lại ngày thường hoặc Lặp lại cả tuần
+    window.handleRepeatChange = (type) => {
+        const weekdaysCb = document.getElementById('form-repeat-weekdays');
+        const allweekCb = document.getElementById('form-repeat-allweek');
+        const daySelect = document.getElementById('form-day');
+
+        if (type === 'weekdays' && weekdaysCb.checked) {
+            allweekCb.checked = false;
+        } else if (type === 'allweek' && allweekCb.checked) {
+            weekdaysCb.checked = false;
+        }
+
+        if (weekdaysCb.checked || allweekCb.checked) {
+            daySelect.disabled = true;
+            daySelect.classList.add('opacity-40', 'pointer-events-none');
+        } else {
+            daySelect.disabled = false;
+            daySelect.classList.remove('opacity-40', 'pointer-events-none');
+        }
+    };
+
+    function resetRepeatCheckboxes() {
+        const weekdaysCb = document.getElementById('form-repeat-weekdays');
+        const allweekCb = document.getElementById('form-repeat-allweek');
+        const daySelect = document.getElementById('form-day');
+        if (weekdaysCb) weekdaysCb.checked = false;
+        if (allweekCb) allweekCb.checked = false;
+        if (daySelect) {
+            daySelect.disabled = false;
+            daySelect.classList.remove('opacity-40', 'pointer-events-none');
+        }
+    }
+
     window.handleMemberChange = (member) => {
         const timeFields = document.getElementById('time-fields-container');
         const activityLabel = document.getElementById('activity-label');
@@ -612,6 +638,7 @@ service cloud.firestore {
         document.getElementById('form-startTime').value = '08:00';
         document.getElementById('form-endTime').value = '09:00';
         document.getElementById('form-activity').value = '';
+        resetRepeatCheckboxes();
         
         document.getElementById('modal-title').innerHTML = '<i class="fa-solid fa-calendar-plus text-blue-600"></i> Thêm Lịch Trình';
         document.getElementById('btn-delete').classList.add('hidden');
@@ -633,6 +660,7 @@ service cloud.firestore {
         document.getElementById('form-startTime').value = item.startTime || item.time || '08:00';
         document.getElementById('form-endTime').value = item.endTime || '09:00';
         document.getElementById('form-activity').value = item.activity || '';
+        resetRepeatCheckboxes();
         
         document.getElementById('modal-title').innerHTML = '<i class="fa-solid fa-pen-to-square text-orange-500"></i> Cập nhật Lịch';
         document.getElementById('btn-delete').classList.remove('hidden');
@@ -665,39 +693,79 @@ service cloud.firestore {
         const endTime = document.getElementById('form-endTime').value;
         const activity = document.getElementById('form-activity').value.trim();
 
+        const repeatWeekdays = document.getElementById('form-repeat-weekdays').checked;
+        const repeatAllWeek = document.getElementById('form-repeat-allweek').checked;
+
         if (!activity) {
             window.showToast("Vui lòng nhập nội dung!", "error");
             return;
         }
         
-        if(member !== 'Cả nhà' && startTime > endTime) {
+        if (member !== 'Cả nhà' && startTime > endTime) {
             window.showToast("Thời gian Bắt đầu phải trước Kết thúc!", "error");
             return;
         }
 
-        let dataObj = {};
-        if (member === 'Cả nhà') {
-            dataObj = { member, activity };
-            if (!id) dataObj.completed = false; 
-        } else {
-            dataObj = { member, day, startTime, endTime, activity };
-        }
+        const saveBtn = document.getElementById('btn-save');
+        saveBtn.disabled = true;
 
         try {
-            if (id) {
-                await updateDoc(doc(db, COLLECTION_NAME, id), dataObj);
-                window.showToast("Đã lưu thay đổi");
+            if (member === 'Cả nhà') {
+                const dataObj = { member, activity };
+                if (!id) dataObj.completed = false;
+
+                if (id) {
+                    await updateDoc(doc(db, COLLECTION_NAME, id), dataObj);
+                    window.showToast("Đã lưu thay đổi");
+                } else {
+                    await addDoc(collection(db, COLLECTION_NAME), dataObj);
+                    window.showToast("Đã thêm ghi chú thành công");
+                }
             } else {
-                await addDoc(collection(db, COLLECTION_NAME), dataObj);
-                window.showToast("Đã thêm thành công");
+                // Xác định danh sách các ngày cần lưu
+                let targetDays = [day];
+                if (repeatWeekdays) {
+                    targetDays = [...WEEKDAYS_LIST];
+                } else if (repeatAllWeek) {
+                    targetDays = [...DAYS_LIST];
+                }
+
+                if (id) {
+                    // Nếu đang sửa 1 lịch có sẵn
+                    if (!repeatWeekdays && !repeatAllWeek) {
+                        await updateDoc(doc(db, COLLECTION_NAME, id), { member, day, startTime, endTime, activity });
+                        window.showToast("Đã lưu thay đổi");
+                    } else {
+                        // Cập nhật ngày hiện tại và nhân bản sang các ngày còn lại trong chu kỳ lặp
+                        await updateDoc(doc(db, COLLECTION_NAME, id), { member, day, startTime, endTime, activity });
+                        const otherDays = targetDays.filter(d => d !== day);
+                        await Promise.all(
+                            otherDays.map(d => addDoc(collection(db, COLLECTION_NAME), { member, day: d, startTime, endTime, activity }))
+                        );
+                        window.showToast(`Đã cập nhật và lặp lại cho ${targetDays.length} ngày!`);
+                    }
+                } else {
+                    // Thêm mới (1 ngày hoặc nhiều ngày lặp lại)
+                    await Promise.all(
+                        targetDays.map(d => addDoc(collection(db, COLLECTION_NAME), { member, day: d, startTime, endTime, activity }))
+                    );
+                    if (targetDays.length > 1) {
+                        window.showToast(`Đã thêm lịch cho ${targetDays.length} ngày trong tuần!`);
+                    } else {
+                        window.showToast("Đã thêm thành công");
+                    }
+                }
             }
+
             window.closeModal();
-            if(state.activeTab !== member) {
+            if (state.activeTab !== member) {
                 state.activeTab = member;
                 renderAll();
             }
         } catch (error) {
             window.showToast("Lỗi: " + error.message, "error");
+        } finally {
+            saveBtn.disabled = false;
         }
     };
 
@@ -899,7 +967,7 @@ service cloud.firestore {
                     </div>
         `;
 
-        weekDates.forEach((weekDay, index) => {
+        weekDates.forEach((weekDay) => {
             let isToday = weekDay.isToday;
             let todayId = isToday ? 'id="header-today"' : '';
             
@@ -994,13 +1062,9 @@ service cloud.firestore {
     }
 
     window.onload = () => {
+        setupWindowsAppIcon();
         initApp();
         renderTabs();
-        
-        updateTelegramUI();
-        if(window.isAutoTelegramEnabled) {
-            startTelegramLoop();
-        }
     };
 </script>
 </body>
