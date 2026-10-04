@@ -27,7 +27,7 @@
     <link id="app-manifest" rel="manifest" href='data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22Th%E1%BB%9Di%20Kh%C3%B3a%20Bi%E1%BB%83u%20Gia%20%C4%90%C3%ACnh%22%2C%22short_name%22%3A%22TKB%20Gia%20%C4%90%C3%ACnh%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23e0f2fe%22%2C%22theme_color%22%3A%22%233b82f6%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fraw.githubusercontent.com%2Fsonthao021012%2FTKB-MY-FAMILY%2Fmain%2FLogo%2520TKB%25201.png%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fpng%22%2C%22purpose%22%3A%22any%20maskable%22%7D%2C%7B%22src%22%3A%22https%3A%2F%2Fraw.githubusercontent.com%2Fsonthao021012%2FTKB-MY-FAMILY%2Fmain%2FLogo%2520TKB%25201.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D'>
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
     
     <style>
@@ -97,7 +97,7 @@
 <div class="w-full h-full p-0 xl:p-4 flex flex-col gap-0 xl:gap-4 bg-transparent">
     <!-- Header -->
     <header class="flex-none flex flex-col md:flex-row justify-between items-center bg-white/80 backdrop-blur-xl xl:rounded-3xl px-4 xl:px-8 py-4 shadow-[0_8px_30px_-5px_rgba(0,0,0,0.05)] border-b xl:border border-white z-10">
-        <div class="flex items-center gap-4 mb-4 md:mb-0 w-full md:w-auto justify-between md:justify-start">
+        <div class="flex items-center gap-4 mb-0 w-full md:w-auto justify-between md:justify-start">
             <div class="flex items-center gap-4">
                 <div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20 border border-slate-100 overflow-hidden shrink-0 p-1">
                     <img src="https://raw.githubusercontent.com/sonthao021012/TKB-MY-FAMILY/main/Logo%20TKB%201.png" alt="Logo TKB" class="w-full h-full object-contain" onerror="this.onerror=null; this.outerHTML='<i class=\'fa-regular fa-calendar-check text-blue-500 text-2xl\'></i>'">
@@ -137,9 +137,9 @@
     <!-- Main Workspace -->
     <div class="flex-1 flex flex-col bg-white/60 backdrop-blur-xl xl:rounded-3xl shadow-[0_8px_30px_-5px_rgba(0,0,0,0.05)] border-0 xl:border border-white/60 overflow-hidden min-h-0 relative">
         
-        <!-- Tabs Bar -->
-        <div class="flex-none border-b border-white/50 p-2 sm:p-3 overflow-x-auto hide-scrollbar touch-pan-x bg-white/40">
-            <nav class="flex gap-2 min-w-max px-2" id="tabs-container">
+        <!-- Tabs Bar (Trên smartphone chia đều 5 cột chỉ hiện icon không cần thanh cuộn) -->
+        <div class="flex-none border-b border-white/50 p-2 sm:p-3 overflow-x-hidden sm:overflow-x-auto hide-scrollbar bg-white/40">
+            <nav class="grid grid-cols-5 gap-1.5 w-full sm:flex sm:w-max sm:gap-2 px-1 sm:px-2" id="tabs-container">
                 <!-- Tabs will be rendered here by JS -->
             </nav>
         </div>
@@ -349,12 +349,38 @@ service cloud.firestore {
     const COLLECTION_NAME = "schedules_v2";
     const LOGO_URL = "https://raw.githubusercontent.com/sonthao021012/TKB-MY-FAMILY/main/Logo%20TKB%201.png";
 
+    // Bộ icon hình ảnh đại diện cho từng thành viên trong gia đình
     const TABS = [
-        { id: 'Cả nhà', label: 'Cả nhà', icon: 'fa-users' },
-        { id: 'ba Sơn', label: 'Ba Sơn', icon: 'fa-user-tie' },
-        { id: 'me Bo', label: 'Mẹ Bo', icon: 'fa-person-dress' },
-        { id: 'Rum', label: 'Rum', icon: 'fa-child-reaching' },
-        { id: 'Nâu', label: 'Nâu', icon: 'fa-baby' }
+        { 
+            id: 'Cả nhà', 
+            label: 'Cả nhà', 
+            icon: 'fa-users',
+            img: 'https://raw.githubusercontent.com/sonthao021012/TKB-MY-FAMILY/main/icon_canha.png'
+        },
+        { 
+            id: 'ba Sơn', 
+            label: 'Ba Sơn', 
+            icon: 'fa-user-tie',
+            img: 'https://raw.githubusercontent.com/sonthao021012/TKB-MY-FAMILY/main/icon_baSon.png'
+        },
+        { 
+            id: 'me Bo', 
+            label: 'Mẹ Bo', 
+            icon: 'fa-person-dress',
+            img: 'https://raw.githubusercontent.com/sonthao021012/TKB-MY-FAMILY/main/icon_meBo.png'
+        },
+        { 
+            id: 'Rum', 
+            label: 'Rum', 
+            icon: 'fa-user-graduate',
+            img: 'https://raw.githubusercontent.com/sonthao021012/TKB-MY-FAMILY/main/icon_Rum.png'
+        },
+        { 
+            id: 'Nâu', 
+            label: 'Nâu', 
+            icon: 'fa-child-dress',
+            img: 'https://raw.githubusercontent.com/sonthao021012/TKB-MY-FAMILY/main/icon_Nau.png'
+        }
     ];
     const DAYS_LIST = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'];
     const WEEKDAYS_LIST = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6'];
@@ -537,7 +563,7 @@ service cloud.firestore {
                 } else {
                     statusDot.className = 'flex h-2 w-2 rounded-full bg-red-500';
                     statusText.textContent = 'OFFLINE';
-                    statusText.textName = 'text-red-600 font-bold';
+                    statusText.className = 'text-red-600 font-bold';
                 }
             });
         } catch (error) {
@@ -801,15 +827,17 @@ service cloud.firestore {
             const btn = document.createElement('button');
             const isActive = state.activeTab === tab.id;
             
-            btn.className = `flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all duration-200 outline-none ${isActive ? 'tab-active' : 'tab-inactive'}`;
+            btn.title = tab.label;
+            btn.className = `flex items-center justify-center gap-2.5 py-1.5 sm:py-2 px-0 sm:px-4 rounded-xl text-sm font-bold whitespace-nowrap transition-all duration-200 outline-none w-full sm:w-auto ${isActive ? 'tab-active' : 'tab-inactive'}`;
             btn.onclick = () => {
                 state.activeTab = tab.id;
                 renderAll();
             };
 
+            const fallbackIconClass = isActive ? 'text-white' : 'text-slate-500';
             btn.innerHTML = `
-                <i class="fa-solid ${tab.icon} ${isActive ? 'text-white' : 'text-slate-400'} text-base"></i>
-                <span>${tab.label}</span>
+                <img src="${tab.img}" alt="${tab.label}" class="w-8 h-8 sm:w-7 sm:h-7 object-contain shrink-0 drop-shadow-sm transition-transform duration-200 ${isActive ? 'scale-110' : ''}" onerror="this.onerror=null; this.outerHTML='<i class=\\'fa-solid ${tab.icon} ${fallbackIconClass} text-lg sm:text-base\\'></i>'">
+                <span class="hidden sm:inline">${tab.label}</span>
             `;
             container.appendChild(btn);
         });
